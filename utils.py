@@ -1,9 +1,18 @@
 import json
+from decimal import Decimal
 from data import data
 from matrix import matx, matutils
-from algorithms import Compa
-from cmdexec import Terminate
-from decimal import Decimal
+from cmdexec import Terminate, Comp
+
+
+def pwr(a: Decimal | int, b: Decimal | int) -> Decimal:
+    if a == 0 and b == 0:
+        return Decimal('1')
+    else:
+        d = Comp.tdeciml(pow(a, b))
+        if d is None:
+            return Decimal('NaN')
+        return d
 
 
 class _Output:
@@ -98,12 +107,12 @@ class Parameter:
     @classmethod
     def parlogreg(cls, d: dict, p: list) -> dict:
         try:
-            if Compa.tdict(d) is None:
+            if Comp.tdict(d) is None:
                 raise Exception
-            p = Compa.dlist(p)
+            p = Comp.dlist(p)
             if p is None:
                 raise Exception
-            if Compa.tdata(list(d.values())) is None:
+            if Comp.tdata(list(d.values())) is None:
                 raise Exception
             pd = dict()
             for i in d.keys():
@@ -115,9 +124,9 @@ class Parameter:
     @classmethod
     def parlogregter(cls, d: dict) -> dict:
         try:
-            if Compa.tdict(d) is None:
+            if Comp.tdict(d) is None:
                 raise Exception
-            if Compa.tdata(list(d.values())) is None:
+            if Comp.tdata(list(d.values())) is None:
                 raise Exception
             pd = dict()
             for i in d.keys():

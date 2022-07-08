@@ -1,29 +1,8 @@
-import math
-from matrix import matx, matutils, Comp, pwr
-from cmdexec import Terminate
-
-
-class Compf(Comp):
-    @staticmethod
-    def taxn(a) -> bool:
-        if a.__class__.__name__ != 'axn':
-            Terminate.retrn(True, str(type(a)) + " is not axn")
-        else:
-            return True
-
-    @staticmethod
-    def tpoly(a) -> bool:
-        if a.__class__.__name__ != 'poly':
-            Terminate.retrn(True, str(type(a)) + " is not poly")
-        else:
-            return True
-
-    @staticmethod
-    def tapolyn(a) -> bool:
-        if a.__class__.__name__ != 'apolyn':
-            Terminate.retrn(True, str(type(a)) + " is not apolyn")
-        else:
-            return True
+# import math
+from decimal import Decimal
+from matrix import matx, matutils
+from cmdexec import Terminate, Comp
+from utils import pwr
 
 
 class axn:
@@ -46,16 +25,16 @@ class axn:
         self.dval = lambda x: self.df.mele(0, 0, False, True) * pwr(x, self.df.mele(0, 1, False, True))
 
 
-class poly(Compf):
+class poly:
     def __init__(self, f: matx | tuple[axn], ret=False) -> None:
         try:
             if type(f) is tuple:
                 for i in f:
-                    if Compf.taxn(i) is None:
+                    if Comp.taxn(i) is None:
                         raise Exception
                 self.f = f
             else:
-                if Compf.tmatx(f) is not None:
+                if Comp.tmatx(f) is not None:
                     if f.collen != 2:
                         raise Exception(str(f.collen)+" != 2")
                 self.f = tuple([axn(i, False, True) for i in matutils.matlxtox(matutils.tpose(f, True), True)])
@@ -67,11 +46,11 @@ class poly(Compf):
             Terminate.retrn(ret, e)
 
 
-class apolyn(Compf):
-    def __init__(self, a: float, n: float, f: poly | matx, chk=True, ret=False) -> None:
+class apolyn:
+    def __init__(self, a: float | Decimal, n: float | Decimal, f: poly | matx, chk=True, ret=False) -> None:
         if chk is True:
-            a = Compf.tdeciml(a)
-            n = Compf.tdeciml(n)
+            a = Comp.tdeciml(a)
+            n = Comp.tdeciml(n)
             if a is None or n is None or n is None:
                 Terminate.retrn(ret, "")
         self.afn = axn(matx(tuple([a, n]), False, True), False, True)
@@ -90,7 +69,7 @@ class apolyn(Compf):
 
 class funcutils:
     @staticmethod
-    def rearr(a, pos: int, ret=False) -> None:
+    def rearr(a, pos: int, ret=False) -> apolyn:
         try:
             if pos is None:
                 raise Exception

@@ -1,24 +1,8 @@
 import math
 from decimal import Decimal
-from matrix import matx, matutils, Comp, pwr
-from cmdexec import Terminate
-
-
-class Compd(Comp):
-    @staticmethod
-    def tdata(d) -> bool:
-        try:
-            if type(d) is list:
-                for i in d:
-                    if i.__class__.__name__ != 'data':
-                        raise Exception(str(type(i)) + " is not data")
-                return True
-            if d.__class__.__name__ != 'data':
-                raise Exception(str(type(d)) + " is not data")
-            else:
-                return True
-        except Exception as e:
-            Terminate.retrn(True, e)
+from matrix import matx, matutils
+from cmdexec import Terminate, Comp
+from utils import pwr
 
 
 class Data:
@@ -50,7 +34,7 @@ class Data:
             if type(x) is tuple:
                 if type(x[0]) is matx:
                     xl = x[0].rowlen
-                    if Compd.tmatx(x) is None:
+                    if Comp.tmatx(x) is None:
                         raise Exception
                     for i in x:
                         if i.collen != 1 or i.rowlen != xl:
@@ -68,7 +52,7 @@ class Data:
         try:
             if type(y) is tuple:
                 if type(y[0]) is matx:
-                    if Compd.tmatx(y) is None:
+                    if Comp.tmatx(y) is None:
                         raise Exception
                     for i in y:
                         if i.collen != 1 or i.rowlen != 1:
@@ -121,7 +105,7 @@ class data:
         try:
             match chk:
                 case True:
-                    li = Compd.intele(li, self.datalen)
+                    li = Comp.intele(li, self.datalen)
                     if li is None:
                         raise Exception
                 case False:
@@ -137,7 +121,7 @@ class data:
         try:
             match chk:
                 case True:
-                    li = Compd.intele(li, self.datalen)
+                    li = Comp.intele(li, self.datalen)
                     if li is None:
                         raise Exception
                 case False:
@@ -153,7 +137,7 @@ class data:
         try:
             match chk:
                 case True:
-                    li = Compd.intele(li, self.datalen)
+                    li = Comp.intele(li, self.datalen)
                     if li is None:
                         raise Exception
                 case False:
@@ -169,7 +153,7 @@ class data:
         try:
             match chk:
                 case True:
-                    li = Compd.intele(li, self.datalen)
+                    li = Comp.intele(li, self.datalen)
                     if li is None:
                         raise Exception
                 case False:
@@ -189,7 +173,7 @@ class datautils:
     @staticmethod
     def data1(d: data, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
             d = d.data1()
             return data(d[0], d[1], False, True)
@@ -200,9 +184,9 @@ class datautils:
     @staticmethod
     def addata(d: data, a: tuple, chk=True, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            if Compd.ttup(a) is None:
+            if Comp.ttup(a) is None:
                 raise Exception
             if d.datalen != len(a):
                 raise Exception(str(d.datalen) + " != " + str(len(a)))
@@ -215,7 +199,7 @@ class datautils:
     @staticmethod
     def datalx(d: data, p: list, ret=False) -> data:
         try:
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
             return data(tuple([matx(i, False, True) for i in d.getlx(p, False, True)]), d.data[1], False, True)
@@ -226,12 +210,12 @@ class datautils:
     @classmethod
     def powlx(cls, d: data, p: list, pw: float, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
-            pw = Compd.tdeciml(pw)
+            pw = Comp.tdeciml(pw)
             if pw is None:
                 raise Exception
             return cls.addata(d, tuple(
@@ -243,9 +227,9 @@ class datautils:
     @classmethod
     def multlx(cls, d: data, p: list, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
             x = d.getlx(p, False, True)
@@ -263,9 +247,9 @@ class datautils:
     @classmethod
     def addlx(cls, d: data, p: list, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
             return cls.addata(d, tuple([matx((sum(i),), False, True) for i in d.getlx(p, False, True)]), False,
@@ -277,12 +261,12 @@ class datautils:
     @classmethod
     def loglx(cls, d: data, p: list, b=math.e, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
-            b = Compd.tdeciml(b)
+            b = Comp.tdeciml(b)
             if b is None or b <= 0:
                 raise Exception
             return cls.addata(d, tuple(
@@ -294,12 +278,12 @@ class datautils:
     @classmethod
     def expolx(cls, d: data, p: list, a=math.e, ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
-            a = Compd.tdeciml(a)
+            a = Comp.tdeciml(a)
             if a is None or a < 0:
                 raise Exception
             return cls.addata(d, tuple(
@@ -310,9 +294,9 @@ class datautils:
     @classmethod
     def triglx(cls, d: data, p: list, f='cos', ret=False) -> data:
         try:
-            if Compd.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compd.intele(p, d.xvars)
+            p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
             match f:
@@ -366,4 +350,3 @@ class datautils:
 # n = datautils.datalx(y, [7, 8, 10])
 # y.pdata
 # n.pdata
- 

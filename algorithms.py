@@ -1,52 +1,10 @@
 import math
-from matrix import matx, matutils, pwr
-from data import *
-from functions import *
-from cmdexec import Terminate
-
-
-class Compa(Compd, Compf):
-
-    # return if positive float
-    @classmethod
-    def tdecimlp(cls, a: float | int) -> float:
-        try:
-            an = cls.tdeciml(a)
-            if an is None:
-                raise Exception
-            if an <= 0:
-                raise Exception(str(a) + " is not positive")
-            return an
-        except Exception as e:
-            print(e)
-
-    @staticmethod
-    def tdict(a: dict) -> bool:
-        try:
-            if type(a) is dict:
-                return True
-            else:
-                raise Exception(str(type(a)) + " is not dict")
-        except Exception as e:
-            print(e)
-
-    @classmethod
-    def matchkeys(cls, a: dict, b: dict) -> bool:
-        try:
-            if cls.tdict(a) is None or cls.tdict(b) is None:
-                raise Exception
-            a = a.keys()
-            b = list(b.keys())
-            if len(a) != len(b):
-                raise Exception(str(len(a)) + " != " + str(len(b)))
-            for i in a:
-                if i in b:
-                    b.remove(i)
-                else:
-                    raise Exception("Keys are not same")
-            return True
-        except Exception as e:
-            print(e)
+from decimal import Decimal
+from matrix import matx, matutils
+from data import data, datautils
+from functions import poly, funcutils
+from cmdexec import Terminate, Comp
+from utils import pwr
 
 
 class apn:
@@ -68,19 +26,17 @@ class apn:
         except Exception as e:
             Terminate.retrn(ret, e)
 
-    classmethod
-    def fval(cls, p: Decimal) -> Decimal:
-        if cls.apn.mele(0, 1, False, True) == 0:
-            return cls.apn.mele(0, 0, False, True)
+    def fval(self, p: Decimal) -> Decimal:
+        if self.apn.mele(0, 1, False, True) == 0:
+            return self.apn.mele(0, 0, False, True)
         else:
-            return cls.apn.mele(0, 0, False, True) * pwr(Decimal(str(p)), cls.apn.mele(0, 1, False, True))
+            return self.apn.mele(0, 0, False, True) * pwr(Decimal(str(p)), self.apn.mele(0, 1, False, True))
 
-    classmethod
-    def fdval(cls, p: Decimal) -> Decimal:
-        if cls.dapn.mele(0, 1, False, True) == 0:
-            return cls.dapn.mele(0, 0, False, True)
+    def fdval(self, p: Decimal) -> Decimal:
+        if self.dapn.mele(0, 1, False, True) == 0:
+            return self.dapn.mele(0, 0, False, True)
         else:
-            return cls.dapn.mele(0, 0, False, True) * pwr(Decimal(str(p)), cls.dapn.mele(0, 1, False, True))
+            return self.dapn.mele(0, 0, False, True) * pwr(Decimal(str(p)), self.dapn.mele(0, 1, False, True))
 
 
 class parameter:
@@ -104,7 +60,7 @@ class function:
     def __init__(self, li: tuple, ret=False) -> None:
         try:
             for i in li:
-                if Compa.tmatx(i) is None:
+                if Comp.tmatx(i) is None:
                     raise Exception
             self.x = li
             self.val = lambda p: matx(tuple([tuple(
@@ -119,7 +75,7 @@ class _Predict(matutils):
 
     # returns predicted value of y for linear regression
     @staticmethod
-    def _predlinreg(p: matx, x: matx, ret=False) -> float:
+    def _predlinreg(p: matx, x: matx, ret=False) -> Decimal:
         try:
             if p.rowlen != x.rowlen + 1:
                 raise Exception(str(x.rowlen) + " != " + str(p.rowlen - 1))
@@ -277,9 +233,9 @@ class _Calculate(_Predict, matutils):
     @staticmethod
     def _weights(d: tuple, xmt: tuple[matx, Decimal], ret=False) -> tuple:
         try:
-            t = Compa.tdeciml(xmt[1])
+            t = Comp.tdeciml(xmt[1])
             xm = xmt[0]
-            if Compa.tmatx(xm) is None:
+            if Comp.tmatx(xm) is None:
                 raise Exception
             if t is None:
                 raise Exception
@@ -831,6 +787,8 @@ class _Calculate(_Predict, matutils):
                 else:
                     x2.matx = matutils.madd(x2, d[0][i], True)
                     y2 += 1
+            y1 = Comp.tdeciml(y1)
+            y2 = Comp.tdeciml(y2)
             return {"mean": [matutils.smult(1 / y1, x1, True).matx[0], matutils.smult(1 / y2, x2, True).matxl()[0]],
                     "phi": [y1 / (y1 + y2), y2 / (y1 + y2)]}
         except Exception as e:
@@ -878,20 +836,20 @@ class _Calculate(_Predict, matutils):
 class LinReg(_Calculate):
 
     @staticmethod
-    def gradesgp(d: data, p: list, a: float, cpf: list | tuple, m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def gradesgp(d: data, p: list | matx, a: float, cpf: list | tuple, m=100, pr=0.01, scale=False, ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
             p = matx(p, True, True)
             if p is None:
                 raise Exception
-            a = Compa.tdecimlp(a)
+            a = Comp.tdecimlp(a)
             if a is None:
                 raise Exception
-            pr = Compa.tdecimlp(pr)
+            pr = Comp.tdecimlp(pr)
             if pr is None:
                 raise Exception
-            m = Compa.tintn(m)
+            m = Comp.tintn(m)
             if m is None:
                 raise Exception
             if p.rowlen != d.xvars + 1:
@@ -916,7 +874,10 @@ class LinReg(_Calculate):
     @staticmethod
     def matrix(d: data, p=None, m=100, pr=0.01, method='inverse', ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
+                raise Exception
+            pr = Comp.tdecimlp(pr)
+            if pr is None:
                 raise Exception
             if p is not None:
                 p = matx(p, ret=True)
@@ -935,31 +896,31 @@ class LinReg(_Calculate):
 class WeiLinReg(_Calculate):
 
     @staticmethod
-    def gradesgp(d: data, p: list, a: float, cfp: list | tuple, x: list, t=float("inf"), m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def gradesgp(d: data, p: list | matx, a: float, cfp: list | tuple, x: list, t=float("inf"), m=100, pr=0.01, scale=False, ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
             p = matx(p, True, True)
             if p is None:
                 raise Exception
-            a = Compa.tdecimlp(a)
+            a = Comp.tdecimlp(a)
             if a is None:
                 raise Exception
-            pr = Compa.tdecimlp(pr)
+            pr = Comp.tdecimlp(pr)
             if pr is None:
                 raise Exception
-            m = Compa.tintn(m)
+            m = Comp.tintn(m)
             if m is None:
                 raise Exception
             if p.rowlen != d.xvars + 1:
                 raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
-            x = Compa.dlist(x)
+            x = Comp.dlist(x)
             if x is None:
                 raise Exception
             x = matx(tuple(x), False, True)
             if x.rowlen != d.xvars:
                 raise Exception(str(x.rowlen) + " != " + str(d.xvars))
-            t = Compa.tdeciml(t)
+            t = Comp.tdeciml(t)
             if t is None:
                 raise Exception
             r = _Calculate._grades(d, p, a, cfp, m, pr, scale, True, (x, t), ret=True)
@@ -982,16 +943,19 @@ class WeiLinReg(_Calculate):
     @staticmethod
     def matrix(d: data, x: list, t=float('inf'), p=None, m=100, pr=0.01, method='inverse', ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            x = Compa.dlist(x)
+            x = Comp.dlist(x)
             if x is None:
                 raise Exception
             x = matx(tuple(x), False, True)
             if x.rowlen != d.xvars:
                 raise Exception(str(x.rowlen) + " != " + str(d.xvars))
-            t = Compa.tdeciml(t)
+            t = Comp.tdeciml(t)
             if t is None:
+                raise Exception
+            pr = Comp.tdecimlp(pr)
+            if pr is None:
                 raise Exception
             if p is not None:
                 p = matx(p, ret=True)
@@ -1010,20 +974,20 @@ class WeiLinReg(_Calculate):
 class LogReg(_Calculate):
 
     @staticmethod
-    def gradesgp(d: data, p: list, a: float, cfp: list | tuple, m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def gradesgp(d: data, p: list | matx, a: float, cfp: list | tuple, m=100, pr=0.01, scale=False, ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
             p = matx(p, True, True)
             if p is None:
                 raise Exception
-            a = Compa.tdecimlp(a)
+            a = Comp.tdecimlp(a)
             if a is None:
                 raise Exception
-            pr = Compa.tdecimlp(pr)
+            pr = Comp.tdecimlp(pr)
             if pr is None:
                 raise Exception
-            m = Compa.tintn(m)
+            m = Comp.tintn(m)
             if m is None:
                 raise Exception
             if p.rowlen != d.xvars + 1:
@@ -1048,11 +1012,11 @@ class LogReg(_Calculate):
     @classmethod
     def gradesgc(cls, d: dict, p: dict, a: float, m=100, pr=0.01, scale=False, ret=False) -> dict:
         try:
-            if Compa.matchkeys(d, p) is None:
+            if Comp.matchkeys(d, p) is None:
                 raise Exception
-            if Compa.lenlist([i["parameters"] for i in p.values()]) is None:
+            if Comp.lenlist([i["parameters"] for i in p.values()]) is None:
                 raise Exception
-            if Compa.tdata(list(d.values())) is None:
+            if Comp.tdata(list(d.values())) is None:
                 raise Exception
             par = dict()
             for i in p.items():
@@ -1078,7 +1042,7 @@ class GDA(_Calculate):
     @classmethod
     def gda(cls, d: data, ret=False) -> dict:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
             return cls._gda(d, True)
         except Exception as e:
@@ -1100,9 +1064,9 @@ class Predict(_Predict):
     @classmethod
     def ylinreg(cls, d: data, p: list, ret=False) -> matx:
         try:
-            if Compa.tdata(d) is None:
+            if Comp.tdata(d) is None:
                 raise Exception
-            p = Compa.dlist(p)
+            p = Comp.dlist(p)
             if p is None:
                 raise Exception
             p = matx(tuple(p), False, True)
@@ -1115,9 +1079,9 @@ class Predict(_Predict):
             Terminate.retrn(ret, e)
 
     @classmethod
-    def linreg(cls, p: list, x: list, ret=False) -> float:
+    def linreg(cls, p: list, x: list, ret=False) -> Decimal:
         try:
-            p = Compa.dlist([p, x])
+            p = Comp.dlist([p, x])
             if p is None:
                 raise Exception
             x = p[1]
@@ -1135,7 +1099,7 @@ class Predict(_Predict):
     @classmethod
     def logreg(cls, p: list, x: list, ret=False) -> int:
         try:
-            p = Compa.dlist([p, x])
+            p = Comp.dlist([p, x])
             if p is None:
                 raise Exception
             x = p[1]
@@ -1161,9 +1125,9 @@ class Predict(_Predict):
     @classmethod
     def gda(cls, d: dict, x: list, ret=False) -> int:
         try:
-            if Compa.tdict(d) is None:
+            if Comp.tdict(d) is None:
                 raise Exception
-            x = Compa.dlist(x)
+            x = Comp.dlist(x)
             if x is None:
                 raise Exception
             x = matx(tuple(x), False, True)
@@ -1182,9 +1146,9 @@ class Predict(_Predict):
     @classmethod
     def logreggc(cls, d: dict, x: list, ret=False) -> int:
         try:
-            if Compa.tdict(d) is None:
+            if Comp.tdict(d) is None:
                 raise Exception
-            x = Compa.dlist(x)
+            x = Comp.dlist(x)
             if x is None:
                 raise Exception
             c = dict()
@@ -1209,9 +1173,9 @@ class Predict(_Predict):
     @classmethod
     def gdagc(cls, d: dict, x: list, ret=False) -> int:
         try:
-            if Compa.tdict(d) is None:
+            if Comp.tdict(d) is None:
                 raise Exception
-            x = Compa.dlist(x)
+            x = Comp.dlist(x)
             if x is None:
                 raise Exception
             c = dict()
@@ -1244,7 +1208,7 @@ class SolveFn(funcutils, matutils):
                 raise Exception
             if x.collen != 1:
                 raise Exception(str(x.collen) + " != 1")
-            pos = Compa.tint(pos)
+            pos = Comp.tint(pos)
             if pos is None:
                 raise Exception
             match fnt:
