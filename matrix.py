@@ -1,11 +1,20 @@
 from decimal import Decimal
 from cmdexec import Terminate, Comp
-from utils import pwr
+
+
+def pwr(a: Decimal | int | float, b: Decimal | int | float) -> Decimal:
+    if a == 0 and b == 0:
+        return Decimal('1')
+    else:
+        try:
+            return Decimal(str(a ** b))
+        except:
+            return Decimal('NaN')
 
 
 class Matx:
     @staticmethod
-    def matrix(li: list | tuple, chk=True) -> tuple[tuple]:
+    def matrix(li: list[list] | tuple[tuple] | list | tuple, chk=True) -> tuple[tuple[Decimal]]:
         try:
             tli = li.__class__.__name__
             match chk:
@@ -14,62 +23,61 @@ class Matx:
                         case 'list':
                             li = Comp.dlist(li)
                             if li is None:
-                                raise Exception
-                            if type(li[0]) is list:
+                                raise Exception("Invalid argument: li")
+                            if li[0].__class__.__name__ == 'list':
                                 if Comp.lenlist(li) is None:
-                                    raise Exception
+                                    raise Exception("Invalid argument: li")
                                 return tuple([tuple(i) for i in li])
                             else:
                                 return tuple(li),
                         case 'tuple':
                             li = Comp.dtup(li)
                             if li is None:
-                                raise Exception
-                            if type(li[0]) is tuple:
+                                raise Exception("Invalid argument: li")
+                            if li[0].__class__.__name__ == 'tuple':
                                 if Comp.lentup(li) is None:
-                                    raise Exception
+                                    raise Exception("Invalid argument: li")
                                 return li
                             else:
                                 return li,
                         case 'matx':
                             return li.matx
                         case _:
-                            raise Exception
+                            raise Exception("Invalid argument: li => list/tuple/matx")
                 case False:
                     match tli:
                         case 'tuple':
-                            if type(li[0]) is float:
+                            if li[0].__class__.__name__ == 'float':
                                 return tuple(Decimal(str(i)) for i in li),
-                            if type(li[0]) is Decimal:
+                            elif li[0].__class__.__name__ == 'Decimal':
                                 return li,
-                            if type(li[0]) is tuple:
+                            elif li[0].__class__.__name__ == 'tuple':
                                 return li
                             else:
-                                raise Exception
+                                raise Exception("Invalid argument: li")
                         case 'matx':
                             return li.matx
                         case _:
-                            raise Exception
+                            raise Exception("Invalid argument: li => tuple/matx")
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(True, e)
 
 
 class matx:
     def __init__(self, li: list | tuple, chk=True, ret=False) -> None:
-        matrix = Matx.matrix(li, chk)
-        if matrix is None:
-            Terminate.retrn(ret, "Invalid matrix!\n")
-        if matrix is not None:
-            self._matx = matrix
-            self.collen = len(matrix)
-            self.rowlen = len(matrix[0])
-            del matrix
+        if (m := Matx.matrix(li, chk)) is not None:
+            self._matx = m
+            self.collen = len(m)
+            self.rowlen = len(m[0])
+            del m
             if self.rowlen == self.collen:
                 self.sqmatx = True
             else:
                 self.sqmatx = False
+        else:
+            Terminate.retrn(ret, "Error: Invalid matx")
 
     @property
     def matx(self) -> tuple:
@@ -77,79 +85,59 @@ class matx:
 
     @matx.setter
     def matx(self, li: list | tuple) -> None:
-        matrix = Matx.matrix(li)
-        if matrix is None:
-            if li.__class__.__name__ == 'matx':
-                matrix = li.matx
-            else: 
-                Terminate.retrn(False, "Invalid matrix!\n")
-        self._matx = matrix
-        self.collen = len(matrix)
-        self.rowlen = len(matrix[0])
-        del matrix
-        if self.rowlen == self.collen:
-            self.sqmatx = True
+        if (m := Matx.matrix(li)) is not None:
+            self._matx = m
+            self.collen = len(m)
+            self.rowlen = len(m[0])
+            del m
+            if self.rowlen == self.collen:
+                self.sqmatx = True
+            else:
+                self.sqmatx = False
         else:
-            self.sqmatx = False
+            Terminate.retrn(False, "Error: Invalid matx")
     
     # prints the value of matx object
     @matx.getter
     def pmatx(self) -> None:
-        mat = [[float(j) for j in i] for i in self.matx]
         print("matx(")
-        for i in mat:
-            print('|', str(i)[1:-1], '|')
+        for k in [[float(j) for j in i] for i in self.matx]:
+            print('|', str(k)[1:-1], '|')
         print(')\n')
-    
-    def rowpop(self, li: list, chk=True, ret=False) -> tuple:
-        try:
-            match chk:
-                case False:
-                    pass
-                case True:
-                    li = Comp.intele(li, self.collen)
-                    if li is None:
-                        raise Exception
-                case _:
-                    raise Exception
-            retu = [i[1] for i in enumerate(list(self._matx)) if i[0] in li]
-            self.matx = tuple([i[1] for i in enumerate(list(self.matx)) if i[0] not in li])
-            return tuple(retu)
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
-    def colpop(self, li: list, chk=True, ret=False) -> tuple:
-        try:
-            match chk:
-                case False:
-                    pass
-                case True:
-                    li = Comp.intele(li, self.collen)
-                    if li is None:
-                        raise Exception
-                case _:
-                    raise Exception
-            matrix = list()
-            retu = list()
-            for i in self.matx:
-                retu1 = list()
-                matrix1 = list()
-                for j in enumerate(i):
-                    if j[0] in li:
-                        retu1.append(j[1])
-                    else:
-                        matrix1.append(j[1])
-                matrix.append(tuple(matrix1))
-                retu.append(tuple(retu1))
-            self.matx = tuple(matrix)
-            del matrix
-            return tuple(retu)
-        except Exception as e:
-            Terminate.retrn(ret, e)
 
     # returns matx as a list
     def matxl(self) -> list:
         return [list(i) for i in self.matx]
+    
+    def pop(self, i: int, r=True, chk=True, ret=False) -> tuple[Decimal]:
+        try:
+            match chk:
+                case False:
+                    pass
+                case True:
+                    i = Comp.intele(i, self.collen)
+                    if i is None:
+                        raise Exception
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            match r:
+                case True:
+                    m = list(self.matx)
+                    p = m.pop(i)
+                    self.matx = tuple(m)
+                case False:
+                    m = self.matxl()
+                    p = list()
+                    for j in range(self.collen):
+                        p.append(m[j].pop(i))
+                        m[j] = tuple(m[j])
+                    self.matx = tuple(m)
+                case _:
+                    raise Exception("Invalid argument: r => bool")
+            del m
+            return tuple(p)
+        except Exception as e:
+            Terminate.retrn(ret, e)
 
     # return element at i,j of matrix
     def mele(self, i: int, j: int, chk=True, ret=False) -> Decimal:
@@ -161,14 +149,12 @@ class matx:
                     i = Comp.intele(i, self.collen)
                     if i is None:
                         raise Exception
-                    i = i[0]
                     j = Comp.intele(j, self.rowlen)
                     if j is None:
                         raise Exception
-                    j = j[0]
                     return self.matx[i][j]
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -182,10 +168,9 @@ class matx:
                     i = Comp.intele(i, self.collen)
                     if i is None:
                         raise Exception
-                    i = i[0]
                     return self.matx[i]
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -199,94 +184,110 @@ class matx:
                     j = Comp.intele(j, self.rowlen)
                     if j is None:
                         raise Exception
-                    j = j[0]
-                    return tuple([self.mele(i, j, False, True) for i in range(self.collen)])
+                    return tuple([self.mele(i, j, chk, True) for i in range(self.collen)])
                 case _:
                     raise Exception
         except Exception as e:
             Terminate.retrn(ret, e)
-
-    # returns row or column elements of the matrix
-    def gele(self, b: list, r: bool, chk=True, ret=False) -> tuple[tuple[Decimal]]:
-        try:
-            match r:
-                case True:
-                    return tuple([self.mrow(i, chk, True) for i in b])
-                case False:
-                    return tuple([self.mcol(i, chk, True) for i in b])
-                case _:
-                    raise Exception
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
-    # add 1 at [0] to matx rows
-    def laddone(self) -> tuple[tuple[Decimal]]:
-        return tuple([tuple([Decimal('1.0'), ] + list(i)) for i in self.matx])
 
 
 class matutils:
     @staticmethod
-    def addmatx(a: matx, b: matx, r=False, ret=False) -> matx:
+    def addmatx(a: matx, b: matx, r=False, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx([a, b]) is None:
-                raise Exception
+            match chk:
+                case True:
+                    if Comp.tmatx([a, b], True) is None:
+                        raise Exception
+                    match r:
+                        case False:
+                            if Comp.eqval(b.collen, a.collen) is None:
+                                raise Exception
+                        case True:
+                            if Comp.eqval(b.rowlen, a.rowlen) is None:
+                                raise Exception
+                        case _:
+                            raise Exception("Invalid argument: r => bool")
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             match r:
                 case False:
-                    if b.collen != a.collen:
-                        raise Exception(str(a.collen) + " != " + str(b.collen))
                     return matx(tuple([tuple(list(a.mrow(i, False, True)) + list(b.mrow(i, False, True))) for i in range(a.collen)]), False, True)
                 case True:
-                    if b.rowlen != a.rowlen:
-                        raise Exception(str(a.rowlen) + " != " + str(b.rowlen))
                     return matx(tuple(list(a.matx) + list(b.matx)), False, True)
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: r => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @staticmethod
-    def maddone(a: matx, ret=False) -> matx:
+    def maddone(a: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            else:
-                return matx(a.laddone(), False, True)
+            match chk:
+                case False:
+                    return matx(tuple([tuple([Decimal('1.0'), ] + list(i)) for i in a.matx]), False, True)        
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    return matx(tuple([tuple([Decimal('1.0'), ] + list(i)) for i in a.matx]), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # convert list x to x
     @staticmethod
-    def matlxtox(a: matx, ret=False) -> tuple:
+    def matlxtox(a: matx, chk=True, ret=False) -> tuple:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            return tuple([matx(i, False, True) for i in a.matx])
+            match chk:
+                case False:
+                    return tuple([matx(i, False, True) for i in a.matx])
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    return tuple([matx(i, False, True) for i in a.matx])
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @staticmethod
-    def matxtolx(a: tuple, ret=False) -> matx:
+    def matxtolx(a: tuple | list, chk=True, ret=False) -> matx:
         try:
-            if Comp.ttup(a) is None:
-                raise Exception
             x = list()
-            for i in a:
-                if Comp.tmatx(i) is None:
-                    raise Exception
-                if i.collen != 1:
-                    raise Exception(str(i.collen) + " != 1")
-                x.append(i.matx[0])
+            match chk:
+                case False:
+                    for i in a:
+                        x.append(i.matx[0])
+                case True:
+                    if Comp.tmatx(a, True) is None:
+                        raise Exception
+                    for i in a:
+                        if Comp.eqval(i.collen, 1) is None:
+                            raise Exception
+                    for i in a:
+                        x.append(i.matx[0])
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             return matx(tuple(x), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns identity matrix of size nxn
     @staticmethod
-    def idm(n: int, ret=False) -> matx:
+    def idm(n: int, chk=True, ret=False) -> matx:
         try:
-            n = Comp.tintn(n)
-            if n is None:
-                raise Exception
+            match chk:
+                case False:
+                    pass
+                case True:
+                    n = Comp.tintn(n)
+                    if n is None:
+                        raise Exception
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             m = list()
             for i in range(n):
                 l1 = list()
@@ -302,40 +303,62 @@ class matutils:
 
     # returns 0 matrix of size mxn
     @staticmethod
-    def zerom(m: int, n: int, ret=False) -> matx:
+    def zerom(m: int, n: int, chk=True, ret=False) -> matx:
         try:
-            n = Comp.tintn(n)
-            m = Comp.tintn(m)
-            if m is None or n is None:
-                raise Exception
-            return matx(tuple([tuple([Decimal('0.0') for _ in range(n)]) for _ in range(m)]), False, True)
+            match chk:
+                case True:
+                    return matx(tuple([tuple([Decimal('0.0') for _ in range(n)]) for _ in range(m)]), False, True)
+                case False:
+                    n = Comp.tintn(n)
+                    m = Comp.tintn(m)
+                    if m is None or n is None:
+                        raise Exception
+                    return matx(tuple([tuple([Decimal('0.0') for _ in range(n)]) for _ in range(m)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns row or column elements of the matrix
     @staticmethod
-    def gele(a: matx, b: list, r=False, ret=False) -> matx:
+    def gele(a: matx, b: list, r=False, chk=True, ret=False) -> matx:
         try:
-            if Comp.tbool(r) is None:
-                raise Exception
-            if r is True:
-                b = Comp.intele(b, a.collen)
-            else:
-                b = Comp.intele(b, a.rowlen)
             if Comp.tmatx(a) is None or b is None:
                 raise Exception
-            return matx(a.gele(b, r, False, True), False, True)
+            match r:
+                case True:
+                    if chk is False:
+                        pass
+                    elif chk is True:
+                        b = Comp.intele(b, a.collen)
+                    else:
+                        raise Exception("Invalid argument: chk => bool")
+                    m = tuple([a.mrow(i, False, True) for i in b])
+                case False:
+                    if chk is False:
+                        pass
+                    elif chk is True:
+                        b = Comp.intele(b, a.rowlen)
+                    else:
+                        raise Exception("Invalid argument: chk => bool")
+                    m = tuple([a.mcol(i, False, True) for i in b])
+                case _:
+                    raise Exception("Invalid argument: r => bool")
+            return matx(m, False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns the transpose of the matrix
-    @staticmethod
-    def tpose(a: matx, ret=False) -> matx:
+    @classmethod
+    def tpose(cls, a: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            lr = a.rowlen
-            return matx(a.gele([i for i in range(lr)], False, False, True), False, True)
+            match chk:
+                case False:
+                    return cls.gele(a, [i for i in range(a.rowlen)], False, False, True)
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    return cls.gele(a, [i for i in range(a.rowlen)], False, False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -345,28 +368,25 @@ class matutils:
         try:
             match chk:
                 case True:
-                    x = Comp.intele([b, c], a.collen)
-                    if x is None:
-                        raise Exception
-                    b = x[0]
-                    c = x[1]
-                    del x
                     if Comp.tmatx(a) is None:
                         raise Exception
                     if a.sqmatx is False:
-                        raise Exception("must be a square matrix!")
+                        raise Exception("Error: Not a square matrix")
+                    d = Comp.intele([b, c], a.rowlen)
+                    if d is None:
+                        raise Exception
+                    b = d[0]
+                    c = d[1]
+                    del d
                 case False:
                     pass
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: chk => bool")
+            a = matx(a, True, True)
             p = pwr(-1, b + c)
-            lc = a.collen
-            co = a.matxl()
-            for i in range(lc):
-                if i != b:
-                    co[i].pop(c)
-            co.pop(b)
-            dn = cls.dnant(matx(tuple([tuple(i) for i in co]), False, True), True)
+            a.pop(c, False, False, True)
+            a.pop(b, chk=False, ret=True)
+            dn = cls.dnant(a, False, True)
             cfc = p * dn
             return cfc
         except Exception as e:
@@ -374,15 +394,20 @@ class matutils:
 
     # returns the determinant of the matrix
     @classmethod
-    def dnant(cls, a: matx, ret=False) -> Decimal:
+    def dnant(cls, a: matx, chk=True, ret=False) -> Decimal:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            if a.sqmatx is False:
-                raise Exception("must be a square matrix!")
+            match chk:
+                case False:
+                    pass
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    if a.sqmatx is False:
+                        raise Exception("Error: Not a square matrix")
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             a = matx(a, True, True)
-            lr = a.rowlen
-            if lr == 1:
+            if (lr := a.rowlen) == 1:
                 d = a.mele(0, 0, False, True)
             else:
                 d = 0
@@ -404,7 +429,7 @@ class matutils:
                     if i != ep:
                         ele = li[i]
                         fac = -1 * ele / e
-                        a.matx = cls.tform(a, i, ep, fac, False, True)
+                        a.matx = cls.tform(a, i, ep, fac, False, False, True)
                 cfc = cls.cofac(a, 0, ep, False, True)
                 if cfc is None:
                     raise Exception
@@ -416,54 +441,68 @@ class matutils:
 
     # returns adjoint matrix of the matrix
     @classmethod
-    def adjnt(cls, a: matx, ret=False) -> matx:
+    def adjnt(cls, a: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            if a.sqmatx is False:
-                raise Exception("must be a square matrix!")
-            lc = a.collen
-            lr = a.rowlen
-            return cls.tpose(
-                matx(tuple([tuple([cls.cofac(a, i, j, False, True) for j in range(lr)]) for i in range(lc)]), False,
-                     True), True)
+            match chk:
+                case False:
+                    return cls.tpose(matx(tuple([tuple([cls.cofac(a, i, j, False, True) for j in range(a.rowlen)]) for i in range(a.collen)]), False, True), False, True)
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    if a.sqmatx is False:
+                        raise Exception("Error: Not a square matrix")
+                    return cls.tpose(matx(tuple([tuple([cls.cofac(a, i, j, False, True) for j in range(a.rowlen)]) for i in range(a.collen)]), False, True), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             print(e)
             Terminate.retrn(ret, e)
 
     # returns inverse matrix of the matrix
     @classmethod
-    def invse(cls, a: matx, ret=False) -> matx:
+    def invse(cls, a: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            det = cls.dnant(a, True)
+            match chk:
+                case False:
+                    pass
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            det = cls.dnant(a, False, True)
             if det is None:
                 raise Exception
             if det == 0:
-                raise Exception("determinant is 0,\ninverse DNE!")
-            return cls.smult(1 / det, cls.adjnt(a, True), True)
+                raise Exception("Error: Determinant is 0,\nInverse DNE!")
+            return cls.smult(1 / det, cls.adjnt(a, False, True), False, True)
         except Exception as e:
             print(e)
             Terminate.retrn(ret, e)
 
     # returns inverse matrix of the matrix using matrix transformation
     @classmethod
-    def invsednant(cls, a: matx, ret=False) -> Decimal:
+    def invsednant(cls, a: matx, chk=True, ret=False) -> Decimal:
         try:
-            if Comp.tmatx(a) is None:
-                raise Exception
-            a = matx(a)
-            det = cls.dnant(a, True)
+            match chk:
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            a = matx(a, True, False)
+            det = cls.dnant(a, False, True)
             if det is None:
                 raise Exception
             if det == 0:
-                raise Exception("determinant is 0,\ninverse DNE!")
+                raise Exception("Error: Determinant is 0,\nInverse DNE!")
             elif det > 0:
-                a.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), a, True)
+                a.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), a, False, True)
             else:
-                a.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), a, True)
-            b = cls.idm(a.rowlen, True)
+                a.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), a, False, True)
+            b = cls.idm(a.rowlen, False, True)
             for i in range(a.collen):
                 ele = a.mele(i, i, False, True)
                 if ele != 1:
@@ -482,7 +521,7 @@ class matutils:
                                         b.matx = cls.tform(b, i + 1, i, Decimal('1'), False, False, True)
                                         b.matx = cls.tform(b, i, i + 1, (1 / ele) - 1, False, False, True)
                                     else:
-                                        raise Exception("Invalid Matrix Inverse")
+                                        raise Exception("Error: Invalid Matrix Inverse")
                 ele = a.mele(i, i, False, True)
                 row = a.mrow(i, False, True)
                 col = a.mcol(i, False, True)
@@ -498,10 +537,10 @@ class matutils:
                         del el
                 del ele
             if det > 0:
-                b.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), b, True)
+                b.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), b, False, True)
             if det < 0:
-                b.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), b, True)
-            return cls.dnant(b, True)
+                b.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), b, False, True)
+            return cls.dnant(b, False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -510,42 +549,31 @@ class matutils:
     def tform(cls, a: matx, b: int, c: int, d: Decimal, r=False, chk=True, ret=False) -> matx:
         try:
             match chk:
+                case False:
+                    pass
                 case True:
                     d = Comp.tdeciml(d)
                     if Comp.tmatx(a) is None or d is None:
                         raise Exception
-                    match r:
-                        case True:
-                            x = Comp.intele([b, c], a.collen)
-                            if x is None:
-                                raise Exception
-                        case False:
-                            x = Comp.intele([b, c], a.rowlen)
-                            if x is None:
-                                raise Exception
-                        case _:
-                            raise Exception
-                    b = x[0]
-                    c = x[1]
-                case False:
-                    pass
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: chk => bool")
+            m = cls.gele(a, [b, c], r, chk, True)
+            if m is None:
+                raise Exception
+            m = m.matx
             match r:
                 case True:
                     lr = a.rowlen
-                    row = a.gele([b, c], True, False, True)
                     a = list(a.matx)
-                    a[b] = tuple([row[0][i] + (d * row[1][i]) for i in range(lr)])
-                    del row
+                    a[b] = tuple([m[0][i] + (d * m[1][i]) for i in range(lr)])
+                    del m
                     return matx(tuple(a), False, True)
                 case False:
                     lc = a.collen
-                    col = a.gele([b, c], False, False, True)
-                    a = list(cls.tpose(a, True).matx)
-                    a[b] = tuple([col[0][i] + (d * col[1][i]) for i in range(lc)])
-                    del col
-                    return matx(cls.tpose(matx(tuple(a), False, True), True), True, True)
+                    a = list(cls.tpose(a, False, True).matx)
+                    a[b] = tuple([m[0][i] + (d * m[1][i]) for i in range(lc)])
+                    del m
+                    return cls.tpose(matx(tuple(a), False, True), False, True)
                 case _:
                     raise Exception
         except Exception as e:
@@ -553,112 +581,212 @@ class matutils:
 
     # returns sum of two matrices
     @staticmethod
-    def madd(a: matx, b: matx, ret=False) -> matx:
+    def madd(a: matx, b: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx([a, b]) is None:
-                raise Exception
-            alc = a.collen
-            alr = a.rowlen
-            blc = b.collen
-            blr = b.rowlen
-            if alc != blc or alr != blr:
-                raise Exception(
-                    "matrix 1 is " + str(alc) + "X" + str(alr) + "\nmatrix 2 is " + str(blc) + "X" + str(blr))
-            return matx(tuple(
-                [tuple([a.mele(i, j, False, True) + b.mele(i, j, False, True) for j in range(alr)]) for i in
-                 range(alc)]), False, True)
+            match chk:
+                case False:
+                    return matx(tuple([tuple([a.mele(i, j, False, True) + b.mele(i, j, False, True) for j in range(a.rowlen)]) for i in range(a.collen)]), False, True)
+                case True:
+                    if Comp.tmatx([a, b], True) is None:
+                        raise Exception
+                    alc = a.collen
+                    alr = a.rowlen
+                    blc = b.collen
+                    blr = b.rowlen
+                    if Comp.eqval([alc, alr], [blc, blr]) is None:
+                        raise Exception
+                    return matx(tuple([tuple([a.mele(i, j, False, True) + b.mele(i, j, False, True) for j in range(alr)]) for i in range(alc)]), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns difference of two matrices
     @staticmethod
-    def msub(a: matx, b: matx, ret=False) -> matx:
+    def msub(a: matx, b: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx([a, b]) is None:
-                raise Exception
-            alc = a.collen
-            alr = a.rowlen
-            blc = b.collen
-            blr = b.rowlen
-            if alc != blc or alr != blr:
-                raise Exception(
-                    "matrix 1 is " + str(alc) + "X" + str(alr) + "\nmatrix 2 is " + str(blc) + "X" + str(blr))
-            return matx(tuple(
-                [tuple([a.mele(i, j, False, True) - b.mele(i, j, False, True) for j in range(alr)]) for i in
-                 range(alc)]), False, True)
+            match chk:
+                case False:
+                    return matx(tuple([tuple([a.mele(i, j, False, True) - b.mele(i, j, False, True) for j in range(a.rowlen)]) for i in range(a.collen)]), False, True)
+                case True:
+                    if Comp.tmatx([a, b], True) is None:
+                        raise Exception
+                    alc = a.collen
+                    alr = a.rowlen
+                    blc = b.collen
+                    blr = b.rowlen
+                    if Comp.eqval([alc, alr], [blc, blr]) is None:
+                        raise Exception
+                    return matx(tuple([tuple([a.mele(i, j, False, True) - b.mele(i, j, False, True) for j in range(alr)]) for i in range(alc)]), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns matrix after scalar multiplication
     @staticmethod
-    def smult(a: Decimal, b: matx, ret=False) -> matx:
+    def smult(a: Decimal, b: matx, chk=True, ret=False) -> matx:
         try:
-            a = Comp.tdeciml(a)
-            if a is None:
-                raise Exception
-            if Comp.tmatx(b) is None:
-                raise Exception
-            blc = b.collen
-            blr = b.rowlen
-            return matx(tuple([tuple([a * b.mele(i, j, False, True) for j in range(blr)]) for i in range(blc)]), False,
-                        True)
+            match chk:
+                case False:
+                    return matx(tuple([tuple([a * b.mele(i, j, False, True) for j in range(b.rowlen)]) for i in range(b.collen)]), False, True)
+                case True:
+                    a = Comp.tdeciml(a)
+                    if a is None:
+                        raise Exception
+                    if Comp.tmatx(b) is None:
+                        raise Exception
+                    blc = b.collen
+                    blr = b.rowlen
+                    return matx(tuple([tuple([a * b.mele(i, j, False, True) for j in range(blr)]) for i in range(blc)]), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def smultfac(cls, a: tuple, b: matx, r=True, ret=False) -> matx:
+    def smultfac(cls, a: tuple, b: matx, r=True, chk=True, ret=False) -> matx:
         try:
-            a = Comp.dtup(a)
-            if a is None:
-                raise Exception
-            if Comp.tmatx(b) is None:
-                raise Exception
+            match chk:
+                case False:
+                    pass
+                case True:
+                    a = Comp.dtup(a)
+                    if a is None:
+                        raise Exception
+                    if Comp.tmatx(b) is None:
+                        raise Exception
+                    if r is True:
+                        if Comp.eqval(len(a), b.collen) is None:
+                            raise Exception
+                    else:
+                        if Comp.eqval(len(a), b.rowlen) is None:
+                            raise Exception
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             if r is True:
-                if len(a) != b.collen:
-                    raise Exception(str(len(a)) + " != " + str(b.collen))
-            else:
-                if len(a) != b.rowlen:
-                    raise Exception(str(len(a)) + " != " + str(b.rowlen))
-            if r is True:
-                b = cls.matlxtox(b, True)
+                b = cls.matlxtox(b, False, True)
                 bn = list()
                 for i in enumerate(a):
-                    bn.append(cls.smult(i[1], b[i[0]], True))
-                return cls.matxtolx(tuple(bn), True)
+                    bn.append(cls.smult(i[1], b[i[0]], False, True))
+                return cls.matxtolx(tuple(bn), False, True)
             else:
-                b = cls.matlxtox(cls.tpose(b, True), True)
+                b = cls.matlxtox(cls.tpose(b, False, True), False, True)
                 bn = list()
                 for i in enumerate(a):
-                    bn.append(cls.smult(i[1], b[i[0]], True))
-                return cls.tpose(cls.matxtolx(tuple(bn), True), True)
+                    bn.append(cls.smult(i[1], b[i[0]], False, True))
+                return cls.tpose(cls.matxtolx(tuple(bn), False, True), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns matrix after matrix multiplication
     @staticmethod
-    def mmult(a: matx, b: matx, ret=False) -> matx:
+    def mmult(a: matx, b: matx, chk=True, ret=False) -> matx:
         try:
-            if Comp.tmatx([a, b]) is None:
-                raise Exception
-            alc = a.collen
-            alr = a.rowlen
-            blc = b.collen
-            blr = b.rowlen
-            if alr != blc:
-                raise Exception(str(alr) + " != " + str(blc))
-            return matx(tuple([tuple(
-                [sum([a.mele(i, j, False, True) * b.mele(j, k, False, True) for j in range(alr)]) for k in range(blr)])
-                for i in range(alc)]), False, True)
+            match chk:
+                case False:
+                    return matx(tuple([tuple([sum([a.mele(i, j, False, True) * b.mele(j, k, False, True) for j in range(a.rowlen)]) for k in range(b.rowlen)]) for i in range(a.collen)]), False, True)
+                case True:
+                    if Comp.tmatx([a, b], True) is None:
+                        raise Exception
+                    alc = a.collen
+                    alr = a.rowlen
+                    blc = b.collen
+                    blr = b.rowlen
+                    if Comp.eqval(alr, blc) is None:
+                        raise Exception
+                    return matx(tuple([tuple([sum([a.mele(i, j, False, True) * b.mele(j, k, False, True) for j in range(alr)]) for k in range(blr)]) for i in range(alc)]), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
         except Exception as e:
             Terminate.retrn(ret, e)
+
+    @staticmethod
+    def uldcompose(a: matx, chk=True, ret=False) -> tuple:
+        try:
+            match chk:
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    if a.sqmatx is None:
+                        raise Exception
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            ut = list()
+            lt = list()
+            dia = list()
+            for i in range(a.collen):
+                ut1 = list()
+                lt1 = list()
+                for j in range(a.rowlen):
+                    if j < i:
+                        lt1.append(a.mele(i, j, False, True))
+                        ut1.append(Decimal('0.0'))
+                    elif i == j:
+                        dia.append(a.mele(i, j, False, True))
+                        lt1.append(Decimal('0.0'))
+                        ut1.append(Decimal('0.0'))
+                    else:
+                        ut1.append(a.mele(i, j, False, True))
+                        lt1.append(Decimal('0.0'))
+                ut.append(tuple(ut1))
+                lt.append(tuple(lt1))
+            return matx(tuple(ut), False, True), matx(tuple(lt), False, True), matx((tuple(dia), ), False, True)
+        except Exception as e:
+            Terminate.retrn(ret, e)
+    
+    @classmethod
+    def dpose(cls, a: matx, li: list, r=False, chk=True, ret=False) -> tuple:
+        try:
+            match chk:
+                case True:
+                    if Comp.tmatx(a) is None:
+                        raise Exception
+                    li = Comp.iwlist(li)
+                    if li is None:
+                        raise Exception
+                    match r:
+                        case False:
+                            if Comp.eqval(sum(li), a.rowlen) is None:
+                                raise Exception
+                        case True:
+                            if Comp.eqval(sum(li), a.collen) is None:
+                                raise Exception
+                        case _:
+                            raise Exception("Invalid argument: r => bool")
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            i = 0
+            ln = list()
+            for j in li:
+                ln.append([i+k for k in range(j)])
+                i += j
+            match r:
+                case False:
+                    a = cls.tpose(a, False, True)
+                    return tuple([cls.tpose(cls.gele(a, i, True, False, True), False, True) for i in ln])
+                case True:
+                    return tuple([cls.gele(a, i, True, False, True) for i in ln])
+        except Exception as e:
+            Terminate.retrn(ret, e)
+
 
 # print("1")
 # z = [1, 2, 3]
 # a1 = [z, [5, 2, int(6)], [5, 5, 8]]
 # b = [[1, 3, 6], [8, 5, 6], [7, 4, 5]]
 # a = matx(a1)
+# x = matutils.dpose(a, [1,2], True)
+# for i in x:
+#     i.pmatx
 # a.matx = a.matx
+# a.pmatx
 # print(a.matxl())
+# a.pmatx
 # b = matx(b)
 # matutils.tpose(a).pmatx
 # print(a.mele(0, 0))
@@ -688,4 +816,4 @@ class matutils:
 # matutils.mmult(a, b).pmatx
 # a = matx([11, 10, 100])
 # matutils.matlxtox(a)
-# print(a.laddone())
+# matutils.maddone(a).pmatx

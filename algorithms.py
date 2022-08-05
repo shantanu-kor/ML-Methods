@@ -1,10 +1,9 @@
 import math
 from decimal import Decimal
-from matrix import matx, matutils
+from matrix import matx, matutils, pwr
 from data import data, datautils
 from functions import poly, funcutils
 from cmdexec import Terminate, Comp
-from utils import pwr
 
 
 class apn:
@@ -43,13 +42,16 @@ class parameter:
     def __init__(self, li: list | tuple, chk=True, ret=False) -> None:
         try:
             par = list()
+            n = list()
             for i in li:
                 par1 = list()
                 for j in i:
                     par1.append(apn(j, chk, True))
+                n.append(len(par1))
                 par.append(tuple(par1))
             self.par = tuple(par)
-            del par
+            self.n = tuple(n)
+            del par, n
             self.val = lambda p: tuple([matx(tuple([j.val(p[i[0]]) for j in i[1]]), False, True) for i in enumerate(self.par)])
             self.dval = lambda p: tuple([matx(tuple([j.dval(p[i[0]]) for j in i[1] if j.dapn is not None]), False, True) for i in enumerate(self.par)])
         except Exception as e:
@@ -57,15 +59,19 @@ class parameter:
 
 
 class function:
-    def __init__(self, li: tuple, ret=False) -> None:
+    def __init__(self, li: tuple, chk=True, ret=False) -> None:
         try:
-            for i in li:
-                if Comp.tmatx(i) is None:
-                    raise Exception
+            match chk:
+                case True:
+                    for i in li:
+                        if Comp.tmatx(i, True) is None:
+                            raise Exception
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
             self.x = li
-            self.val = lambda p: matx(tuple([tuple(
-                [matutils.mmult(p[j[0]], matutils.tpose(j[1], True), True).mele(0, 0, False, True) for j in
-                 enumerate(i)]) for i in self.x]), False, True)
+            self.val = lambda p: matx(tuple([tuple([matutils.mmult(p[j[0]], matutils.tpose(j[1], False, True), False, True).matx[0][0] for j in enumerate(i)]) for i in self.x]), False, True)
             del li, i
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -73,29 +79,42 @@ class function:
 
 class _Predict(matutils):
 
-    # returns predicted value of y for linear regression
     @staticmethod
-    def _predlinreg(p: matx, x: matx, ret=False) -> Decimal:
+    def _plinreggp(p: matx, p1: parameter, x: matx, const=False, ret=False) -> Decimal:
         try:
-            if p.rowlen != x.rowlen + 1:
-                raise Exception(str(x.rowlen) + " != " + str(p.rowlen - 1))
-            y = matutils.mmult(p, matutils.tpose(matutils.maddone(x, True), True), True).mele(0, 0, False, True)
-            if y is None:
-                raise Exception
-            return y
+            match const:
+                case True:
+                    x = matutils.maddone(x, False, True)
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: const => bool")
+            x = [matutils.tpose(i, False, True) for i in matutils.dpose(x, p1.n, chk=False, ret=True)]
+            return sum([matutils.mmult(i[1], x[i[0]], False, True).matx[0][0] for i in enumerate(p1.val(p.matx[0]))])
+        except Exception as e:
+            Terminate.retrn(ret, e)
+
+    # returns predicted value of y for linear regression
+    @classmethod
+    def _plinreg(cls, p: matx, x: matx, const=False, ret=False) -> Decimal:
+        try:
+            return cls._plinreggp(p, parameter(tuple([((Decimal('1'), Decimal('1')),) for _ in range(p.rowlen)]), False, True), x, const, ret=True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns True for y=1 and False for y=0
     @staticmethod
-    def _predlogreg(p: matx, x: matx, ret=False) -> bool:
+    def _plogreggp(p: matx, p1: parameter, x: matx, const=False, ret=False) -> bool:
         try:
-            if p.rowlen != x.rowlen + 1:
-                raise Exception(str(x.rowlen) + " != " + str(p.rowlen - 1))
-            h = 1 / (1 + pwr(Decimal(str(math.e)),
-                             -1 * matutils.mmult(p, matutils.tpose(matutils.maddone(x, True), True), True).mele(0, 0,
-                                                                                                                False,
-                                                                                                                True)))
+            match const:
+                case True:
+                    x = matutils.maddone(x, False, True)
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: const => bool")
+            x = [matutils.tpose(i, False, True) for i in matutils.dpose(x, p1.n, chk=False, ret=True)]
+            h = 1 / (1 + pwr(Decimal(str(math.e)), -1 * sum([matutils.mmult(i[1], x[i[0]], False, True).matx[0][0] for i in enumerate(p1.val(p.matx[0]))])))
             if h is None:
                 raise Exception
             if h < 0.5:
@@ -105,24 +124,30 @@ class _Predict(matutils):
         except Exception as e:
             Terminate.retrn(ret, e)
 
+    @classmethod
+    def _plogreg(cls, p: matx, x: matx, const=False, ret=False) -> bool:
+        try:
+            return cls._plogreggp(p, parameter(tuple([((Decimal('1'), Decimal('1')),) for _ in range(p.rowlen)]), False, True), x, const, ret=True)
+        except Exception as e:
+            Terminate.retrn(ret, e)
+
     # returns True for y=1 and False for y=0
     @staticmethod
-    def _predgda(d: dict, x: matx, ret=False) -> bool:
+    def _pgda(d: dict, x: matx, ret=False) -> bool:
         try:
             if d["n"] != x.rowlen:
                 raise Exception(str(d["n"]) + " != " + str(x.rowlen))
-            dif = [matutils.msub(x, matx(i, True, True), True) for i in d["mean"]]
+            dif = [matutils.msub(x, matx(i, True, True), False, True) for i in d["mean"]]
             if dif is None:
                 raise Exception
             cov = matx(d["cov"], True, True)
             if cov is None:
                 raise Exception
-            dn = pwr(Decimal(str(2 * math.pi)), Decimal(str(d["n"] / 2))) * pwr(matutils.dnant(cov, True), Decimal(str(1 / 2)))
+            dn = pwr(Decimal(str(2 * math.pi)), Decimal(str(d["n"] / 2))) * pwr(matutils.dnant(cov, False, True), Decimal(str(1 / 2)))
             if dn is None:
                 raise Exception
             h = [pwr(Decimal(str(math.e)), (
-                matutils.mmult(matutils.mmult(i, matutils.invse(cov, True), True), matutils.tpose(i, True), True).mele(
-                    0, 0, False, True)) / -2) / dn for i in dif]
+                matutils.mmult(matutils.mmult(i, matutils.invse(cov, False, True), False, True), matutils.tpose(i, False, True), False, True).matx[0][0]) / -2) / dn for i in dif]
             if h is None:
                 raise Exception
             if h[0] > h[1]:
@@ -134,48 +159,29 @@ class _Predict(matutils):
 
     # returns actual and predicted y
     @classmethod
-    def _ypredy(cls, d: tuple, p: matx, ret=False) -> list:
+    def _ypy(cls, d: tuple, p: matx, const=False, ret=False) -> list:
         try:
-            return [[d[1][i].mele(0, 0, False, True), cls._predlinreg(p, d[0][i], True)] for i in range(len(d[1]))]
+            return [[d[1][i].matx[0][0], cls._plinreg(p, d[0][i], const, True)] for i in range(len(d[1]))]
         except Exception as e:
             Terminate.retrn(ret, e)
 
 
 class _Calculate(_Predict, matutils):
 
-    @staticmethod
-    def _getfn(x: tuple, li: list, ret=False) -> function:
-        try:
-            if sum(li) != x[0].rowlen:
-                raise Exception
-            f = list()
-            for i in x:
-                jn = 0
-                im = i.matx[0]
-                f1 = list()
-                for j in li:
-                    f1.append(matx(im[jn:jn + j], False, True))
-                    jn += j
-                f.append(tuple(f1))
-            return function(tuple(f), True)
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
     # scale x values between [0, 1]
     @staticmethod
     def _scale0to1x(x: matx, ret=False) -> dict:
         try:
-            x = matutils.tpose(x, True)
+            x = matutils.tpose(x, False, True)
             mx = list()
             mn = list()
             for i in x.matx:
                 mn.append(min(i))
-            x = matutils.msub(x, matx(tuple([tuple([mn[i] for _ in range(x.rowlen)]) for i in range(x.collen)]), False,
-                                      True), True)
+            x = matutils.msub(x, matx(tuple([tuple([mn[i] for _ in range(x.rowlen)]) for i in range(x.collen)]), False, True), False, True)
             for i in x.matx:
                 mx.append(max(i))
-            x = tuple([matutils.smult(1 / mx[i[0]], i[1], True) for i in enumerate(matutils.matlxtox(x, True))])
-            x = matutils.matlxtox(matutils.tpose(matutils.matxtolx(x, True), True), True)
+            x = tuple([matutils.smult(1 / mx[i[0]], i[1], False, True) for i in enumerate(matutils.matlxtox(x, False, True))])
+            x = matutils.matlxtox(matutils.tpose(matutils.matxtolx(x, False, True), False, True), False, True)
             if x is None:
                 raise Exception
             return {"constant": matx(tuple(mn), False, True), "factor": matx(tuple(mx), False, True), "values": x}
@@ -190,8 +196,8 @@ class _Calculate(_Predict, matutils):
             y = cls._scale0to1x(d.getay(), True)
             if x is None or y is None:
                 raise Exception
-            return {"constant": matutils.addmatx(x["constant"], y["constant"], ret=True),
-                    "factor": matutils.addmatx(x["factor"], y["factor"], ret=True),
+            return {"constant": matutils.addmatx(x["constant"], y["constant"], chk=False, ret=True),
+                    "factor": matutils.addmatx(x["factor"], y["factor"], chk=False, ret=True),
                     "data": data(x["values"], y["values"], False, True)}
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -200,13 +206,14 @@ class _Calculate(_Predict, matutils):
     @staticmethod
     def _scalepar(c: matx, f: matx, p: matx, scale='0to1', ret=False) -> matx:
         try:
+            c = matx(c, True, True)
             match scale:
                 case '0to1':
                     pn = list()
                     p = matx(tuple([(1 / f.mele(0, -1, False, True)) * i for i in p.matx[0]]), False, True)
                     c = matx(tuple([c.mele(0, i, False, True) / f.mele(0, i, False, True) for i in range(c.rowlen)]),
                              False, True)
-                    d = c.colpop([c.rowlen - 1, ], False, True)[0][0]
+                    d = c.pop(c.rowlen - 1, False, False, True)[0]
                     for i in range(p.rowlen):
                         if i == 0:
                             pn.append(p.mele(0, i, False, True) + sum(c.matx[0]) - d)
@@ -217,7 +224,7 @@ class _Calculate(_Predict, matutils):
                     pn = list()
                     c = matx(tuple([c.mele(0, i, False, True) / f.mele(0, i, False, True) for i in range(c.rowlen)]),
                              False, True)
-                    d = c.colpop([c.rowlen - 1, ], False, True)[0][0]
+                    d = c.pop(c.rowlen - 1, False, False, True)[0]
                     for i in range(p.rowlen):
                         if i == 0:
                             pn.append(p.mele(0, i, False, True) - sum(c.matx[0]) + d)
@@ -225,7 +232,7 @@ class _Calculate(_Predict, matutils):
                             pn.append(p.mele(0, i, False, True) * (1 / f.mele(0, i - 1, False, True)))
                     return matx(tuple([f.mele(0, -1, False, True) * i for i in pn]), False, True)
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: scale => '0to1'/'orignl'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -243,8 +250,8 @@ class _Calculate(_Predict, matutils):
                 raise Exception(str(d[0].rowlen) + " != " + str(xm.rowlen))
             w = list()
             for i in d:
-                w1 = matutils.msub(i, xm, True)
-                w1 = matutils.mmult(w1, matutils.tpose(w1, True), True).mele(0, 0, False, True)
+                w1 = matutils.msub(i, xm, False, True)
+                w1 = matutils.mmult(w1, matutils.tpose(w1, False, True), False, True).matx[0][0]
                 w.append(pwr(Decimal(str(math.e)), - w1 / pwr(t, 2)))
             return tuple(w)
         except Exception as e:
@@ -259,30 +266,21 @@ class _Calculate(_Predict, matutils):
                 case 'linreg':
                     match wt:
                         case 'NoneType':
-                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(d[0].val(p1.dval(p.matx[0])), True), matutils.msub(matx(tuple([(sum(i),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], True), True), True), True), True)
+                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(d[0].val(p1.dval(p.matx[0])), False, True), matutils.msub(matx(tuple([(sum(i),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
                         case 'tuple':
-                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(matutils.smultfac(w, d[0].val(p1.dval(p.matx[0])), ret=True), True), matutils.msub(matx(tuple([(sum(i),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], True), True), True), True), True)
+                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(matutils.smultfac(w, d[0].val(p1.dval(p.matx[0])), chk=False, ret=True), False, True), matutils.msub(matx(tuple([(sum(i),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
                         case _:
-                            raise Exception
+                            raise Exception("Invalid argument: w => None/(weights, ...)")
                 case 'logreg':
                     match wt:
                         case 'NoneType':
-                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(
-                                matutils.tpose(d[0].val(p1.dval(p.matx[0])), True), matutils.msub(matx(tuple(
-                                    [(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]),
-                                    False, True),
-                                    d[1], True), True),
-                                                                                  True), True), True)
+                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(d[0].val(p1.dval(p.matx[0])), False, True), matutils.msub(matx(tuple([(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
                         case 'tuple':
-                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(
-                                matutils.tpose(matutils.smultfac(w, d[0].val(p1.dval(p.matx[0])), ret=True), True),
-                                matutils.msub(matx(tuple(
-                                    [(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]),
-                                    False, True), d[1], True), True), True), True), True)
+                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(matutils.smultfac(w, d[0].val(p1.dval(p.matx[0])), chk=False, ret=True), False, True), matutils.msub(matx(tuple([(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
                         case _:
-                            raise Exception
+                            raise Exception("Invalid argument: w => None/(weights, ...)")
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: reg => 'linreg'/'logreg'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -290,8 +288,8 @@ class _Calculate(_Predict, matutils):
     @classmethod
     def _coofdet(cls, d: tuple, p: matx, ret=False) -> Decimal:
         try:
-            y = cls._ypredy(d, p, True)
-            ym = sum([i.mele(0, 0, False, True) for i in d[1]]) / len(d[1])
+            y = cls._ypy(d, p, ret=True)
+            ym = sum([i.matx[0][0] for i in d[1]]) / len(d[1])
             ssr = sum([pwr((i[1] - ym), 2) for i in y])
             sst = sum([pwr((i[0] - ym), 2) for i in y])
             return ssr / sst
@@ -309,66 +307,83 @@ class _Calculate(_Predict, matutils):
                 # retuns misclassifications after logistic regression
                 case 'logreg':
                     for i in range(len(d[1])):
-                        if d[1][i].mele(0, 0, False, True) == 0:
+                        if d[1][i].matx[0][0] == 0:
                             dic["0"][0] += 1
-                            if cls._predlogreg(matx(tuple(d1["parameters"]), False, True), d[0][i], True) is True:
+                            if cls._plogreg(matx(tuple(d1["parameters"]), False, True), d[0][i], True) is True:
                                 dic["0"][1] += 1
                                 dic["0"][2].append([str(j) for j in d[0][i].matxl()[0]])
                         else:
                             dic["1"][0] += 1
-                            if cls._predlogreg(matx(tuple(d1["parameters"]), False, True), d[0][i], True) is False:
+                            if cls._plogreg(matx(tuple(d1["parameters"]), False, True), d[0][i], True) is False:
                                 dic["1"][1] += 1
                                 dic["1"][2].append([str(j) for j in d[0][i].matxl()[0]])
                     return dic
                 # returns misclassifications after gda
                 case 'gda':
                     for i in range(len(d[1])):
-                        if d[1][i].mele(0, 0, False, True) == 0:
+                        if d[1][i].matx[0][0] == 0:
                             dic["0"][0] += 1
-                            if cls._predgda(d1, d[0][i]) is True:
+                            if cls._pgda(d1, d[0][i]) is True:
                                 dic["0"][1] += 1
                                 dic["0"][2].append([str(j) for j in d[0][i].matxl()[0]])
                         else:
                             dic["1"][0] += 1
-                            if cls._predgda(d1, d[0][i]) is False:
+                            if cls._pgda(d1, d[0][i]) is False:
                                 dic["1"][1] += 1
                                 dic["1"][2].append([str(j) for j in d[0][i].matxl()[0]])
                     return dic
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: method => 'logreg'/'gda'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # performs regression using gradient descent
     @classmethod
-    def _grades(cls, d: data, p: matx, a: Decimal, cfp: list | tuple, m: int, pr: Decimal, scale=False, weigh=False, xmt=None, reg='linreg', ret=False) -> dict:
+    def _grades(cls, d: data, p: matx, a: Decimal, cfp: list | tuple, m: int, pr: Decimal, scale=False, weigh=False, xmt=None, reg='linreg', const=True, ret=False) -> dict:
         try:
             li = list()
             for i in cfp:
                 li.append(len(i))
             p1 = parameter(cfp, ret=True)
+            if p.collen != 1 or p.rowlen != len(p1.n):
+                raise Exception("Check: p/cpf")
             match weigh:
                 case False:
                     pass
                 case True:
                     w = cls._weights(d.data[0], xmt, False)
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: weigh => bool")
             match scale:
                 case True:
                     sc = cls._scale0to1(d, True)
                     if sc is None:
                         raise Exception
-                    d1 = (cls._getfn(sc["data"].data1()[0], li, True), sc["data"].getay(),)
-                    p = cls._scalepar(sc["constant"], sc["factor"], p, ret=True)
+                    match const:
+                        case True:
+                            d = datautils.data1(sc["data"], True)
+                        case False:
+                            d = sc["data"]
+                        case _:
+                            raise Exception("Invalid argument: const => bool")
+                    scc = sc["constant"]
+                    scf = sc["factor"]
+                    del sc
+                    p = cls._scalepar(scc, scf, p, ret=True)
                     if p is None:
                         raise Exception
                 case False:
-                    d1 = (cls._getfn(d.data1()[0], li, True), d.getay(),)
+                    match const:
+                        case True:
+                            d = datautils.data1(d, True)
+                        case False:
+                            pass
+                        case _:
+                            raise Exception("Invalid argument: const => bool")
                 case _:
-                    raise Exception
-            c = 0
-            while c < m:
+                    raise Exception("Invalid argument: scale => bool")
+            d1 = (function(tuple([matutils.dpose(i, li, chk=False, ret=True) for i in d.data[0]]), True), d.getay())
+            while (c := 0) < m:
                 c += 1
                 match reg:
                     case 'linreg':
@@ -378,7 +393,7 @@ class _Calculate(_Predict, matutils):
                             case True:
                                 pn = cls._nextp(d1, p, a, p1, w, ret=True)
                             case _:
-                                raise Exception
+                                raise Exception("Invalid argument: weigh => bool")
                     case 'logreg':
                         match weigh:
                             case False:
@@ -386,7 +401,9 @@ class _Calculate(_Predict, matutils):
                             case True:
                                 pn = cls._nextp(d1, p, a, p1, w, reg, ret=True)
                             case _:
-                                raise Exception
+                                raise Exception("Invalid argument: weigh => bool")
+                    case _:
+                        raise Exception("Invalid argument: reg => 'linreg'/'logreg'")
                 if pn is None:
                     raise Exception
                 err = math.sqrt(sum([pwr((i[1] - p.mele(0, i[0], False, True)) / i[1], 2) for i in
@@ -400,14 +417,13 @@ class _Calculate(_Predict, matutils):
                         raise Exception("parameter", i, "is ", pn.mele(0, i, False, True))
             match scale:
                 case True:
-                    p = cls._scalepar(sc["constant"], sc["factor"], p, 'orignl', True)
+                    p = cls._scalepar(scc, scf, p, 'orignl', True)
                     if p is None:
                         raise Exception
-                    del sc
                 case False:
                     pass
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: scale => bool")
             match reg:
                 case 'linreg':
                     dic = dict()
@@ -430,7 +446,7 @@ class _Calculate(_Predict, matutils):
                     dic1.update({"parameters": [str(i) for i in dic1["parameters"]]})
                     return dic1
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: reg => 'linreg'/'logreg'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -440,7 +456,7 @@ class _Calculate(_Predict, matutils):
             xtt = xt.__class__.__name__
             match xtt:
                 case 'NoneType':
-                    x = matutils.matlxtox(matutils.tpose(x, True), True)
+                    x = matutils.matlxtox(matutils.tpose(x, False, True), False, True)
                     upr = list()
                     dia = list()
                     for i in range(len(x)):
@@ -449,11 +465,11 @@ class _Calculate(_Predict, matutils):
                         for j in range(len(x)):
                             if j == i:
                                 dia1.append(
-                                    matutils.mmult(x[i], matutils.tpose(x[j], True), True).mele(0, 0, False, True))
+                                    matutils.mmult(x[i], matutils.tpose(x[j], False, True), False, True).matx[0][0])
                                 upr1.append(Decimal('0.0'))
                             elif j > i:
                                 upr1.append(
-                                    matutils.mmult(x[i], matutils.tpose(x[j], True), True).mele(0, 0, False, True))
+                                    matutils.mmult(x[i], matutils.tpose(x[j], False, True), False, True).matx[0][0])
                                 dia1.append(Decimal('0.0'))
                             else:
                                 upr1.append(Decimal('0.0'))
@@ -461,49 +477,23 @@ class _Calculate(_Predict, matutils):
                         upr.append(tuple(upr1))
                         dia.append(tuple(dia1))
                 case 'matx':
-                    return matutils.mmult(matutils.tpose(xt), x, True)
+                    return matutils.mmult(matutils.tpose(xt, False, True), x, False, True)
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: xt => None/matx")
             upr = matx(tuple(upr), False, True)
             dia = matx(tuple(dia), False, True)
-            return matutils.madd(dia, matutils.madd(upr, matutils.tpose(upr, True), True), True)
+            return matutils.madd(dia, matutils.madd(upr, matutils.tpose(upr, False, True), False, True), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @staticmethod
     def _jacobiany(x: matx, y: matx, ret=False) -> matx:
         try:
-            x = matutils.matlxtox(matutils.tpose(x, True), True)
+            x = matutils.matlxtox(matutils.tpose(x, False, True), False, True)
             j = list()
             for i in x:
-                j.append((matutils.mmult(i, y, True).mele(0, 0, False, True),))
+                j.append((matutils.mmult(i, y, False, True).matx[0][0],))
             return matx(tuple(j), False, True)
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
-    @staticmethod
-    def _uldecompose(a: matx, ret=False) -> tuple:
-        try:
-            if a.sqmatx is None:
-                raise Exception
-            ut = list()
-            lt = list()
-            for i in range(a.collen):
-                ut1 = list()
-                lt1 = list()
-                for j in range(a.rowlen):
-                    if j < i:
-                        lt1.append(a.mele(i, j, False, True))
-                        ut1.append(Decimal('0.0'))
-                    elif i == j:
-                        ut1.append(a.mele(i, j, False, True))
-                        lt1.append(a.mele(i, j, False, True))
-                    else:
-                        ut1.append(a.mele(i, j, False, True))
-                        lt1.append(Decimal('0.0'))
-                ut.append(tuple(ut1))
-                lt.append(tuple(lt1))
-            return matx(tuple(ut), False, True), matx(tuple(lt), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -517,12 +507,10 @@ class _Calculate(_Predict, matutils):
                     if j < i:
                         pn1 += lt.mele(i, j, False, True) * p.mele(0, j, False, True)
                 pn.append((pn1,))
-            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, True), True)
+            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, False, True), False, True)
             for i in range(ut.collen):
                 if i > 0:
-                    pn.matx = matutils.addmatx(matutils.madd(matutils.mmult(pn, matx(
-                        tuple([(j,) for j in ut.mrow(ut.collen - 1 - i, False, True)[ut.collen - i:]]), False, True),
-                                                                            True), p[-(i + 1)]), pn, ret=True)
+                    pn.matx = matutils.addmatx(matutils.madd(matutils.mmult(pn, matx(tuple([(j,) for j in ut.mrow(ut.collen - 1 - i, False, True)[ut.collen - i:]]), False, True), False, True), p[-(i + 1)], False, True), pn, chk=False, ret=True)
                 else:
                     pn = p[-1]
             return pn
@@ -539,12 +527,10 @@ class _Calculate(_Predict, matutils):
                     if j > i:
                         pn1 += ut.mele(i, j, False, True) * p.mele(0, j, False, True)
                 pn.append((pn1,))
-            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, True), True)
+            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, False, True), False, True)
             for i in range(lt.collen):
                 if i > 0:
-                    pn.matx = matutils.addmatx(pn, matutils.madd(
-                        matutils.mmult(pn, matx(tuple([(j,) for j in lt.mrow(i, False, True)[:i]]), False, True), True),
-                        p[i]), ret=True)
+                    pn.matx = matutils.addmatx(pn, matutils.madd(matutils.mmult(pn, matx(tuple([(j,) for j in lt.mrow(i, False, True)[:i]]), False, True), False, True), p[i], False, True), chk=False, ret=True)
                 else:
                     pn = p[0]
             return pn
@@ -556,12 +542,12 @@ class _Calculate(_Predict, matutils):
         try:
             match method:
                 case 'inverse':
-                    return matutils.mmult(matutils.tpose(b, True), matutils.invse(a, True), True)
+                    return matutils.mmult(matutils.tpose(b, False, True), matutils.invse(a, False, True), False, True)
                 case 'uttform':
                     for i in range(a.collen):
                         an = list(a.matx)
                         bn = list(b.matx)
-                        acol = a.gele([i, ], False, False, True)[0]
+                        acol = matutils.gele(a, [i, ], False, False, True).matx[0]
                         acm = max([acol[j] for j in range(len(acol)) if j > i - 1])
                         for j in range(a.collen):
                             if a.mele(0, j, False, True) == acm:
@@ -586,10 +572,7 @@ class _Calculate(_Predict, matutils):
                         an = matx(tuple(
                             [(a.mele(a.collen - 1 - i, a.rowlen - 1 + j - i + 1, False, True),) for j in range(i)]),
                             False, True)
-                        p.matx = matutils.addmatx(
-                            matutils.smult(1 / a.mele(a.collen - 1 - i, a.rowlen - 1 - i, False, True),
-                                           matutils.msub(matx(b.mrow(b.collen - 1 - i, False, True), False, True),
-                                                         matutils.mmult(p, an, True), True)), p, False, True)
+                        p.matx = matutils.addmatx(matutils.smult(1 / a.mele(a.collen - 1 - i, a.rowlen - 1 - i, False, True), matutils.msub(matx(b.mrow(b.collen - 1 - i, False, True), False, True), matutils.mmult(p, an, False, True), False, True), False, True), p, False, False, True)
                     del an
                     return p
                 case 'gauseidel':
@@ -606,21 +589,21 @@ class _Calculate(_Predict, matutils):
                                 if j != i:
                                     el = a.mele(j, i, False, True)
                                     if el != 0:
-                                        if el == 0:
+                                        if row == None:
                                             row = j
-                                        else:
-                                            if el < a.mele(row, i, False, True):
-                                                row = el
+                                        if math.fabs(el) < math.fabs(a.mele(row, i, False, True)):
+                                            row = j
                             if row is None:
                                 raise Exception
+                            el = a.mele(row, i, False, True)
                             a.matx = matutils.tform(a, i, row, (-1) / el, True, False, True)
                             b.matx = matutils.tform(b, i, row, (-1) / el, True, False, True)
                         else:
                             fac.insert(i, -1 / ele)
-                            a.matx = matutils.smultfac(tuple(fac), a, ret=True)
-                            b.matx = matutils.smultfac(tuple(fac), b, ret=True)
-                    a.matx = matutils.madd(a, matutils.idm(a.rowlen, True), True)
-                    a = cls._uldecompose(a, True)
+                            a.matx = matutils.smultfac(tuple(fac), a, chk=False, ret=True)
+                            b.matx = matutils.smultfac(tuple(fac), b, chk=False, ret=True)
+                    a.matx = matutils.madd(a, matutils.idm(a.rowlen, False, True), False, True)
+                    a = matutils.uldcompose(a, False, True)
                     ut = a[0]
                     lt = a[1]
                     del a
@@ -632,9 +615,8 @@ class _Calculate(_Predict, matutils):
                                 uts += ut.mele(i, j, False, True)
                             elif j < i:
                                 lts += lt.mele(i, j, False, True)
-                    c = 0
                     if math.fabs(lts) > math.fabs(uts):
-                        while c < m:
+                        while (c := 0) < m:
                             c += 1
                             pn = cls._lup(lt, ut, p, b)
                             if pn is None:
@@ -649,7 +631,7 @@ class _Calculate(_Predict, matutils):
                                         "inf") or pn.mele(0, i, False, True) == float("-inf"):
                                     raise Exception("parameter", i, "is ", pn.mele(0, i, False, True))
                     else:
-                        while c < m:
+                        while (c := 0) < m:
                             c += 1
                             pn = cls._ulp(ut, lt, p, b)
                             if pn is None:
@@ -670,17 +652,17 @@ class _Calculate(_Predict, matutils):
                         cola = a.mcol(i, False, True)
                         for j in range(a.collen):
                             if j > i + 1:
-                                a.matx = cls.tform(a, j, i + 1, -cola[j] / elea, True, False, True)
-                                b.matx = cls.tform(b, j, i + 1, -cola[j] / elea, True, False, True)
+                                a.matx = cls.tform(a, j, i + 1, - cola[j] / elea, True, False, True)
+                                b.matx = cls.tform(b, j, i + 1, - cola[j] / elea, True, False, True)
                         elec = a.mele(a.collen - 2 - i, a.rowlen - 1 - i, False, True)
                         colc = a.mcol(a.rowlen - 1 - i, False, True)
                         for j in range(a.collen):
                             if j < a.collen - 2 - i:
-                                a.matx = cls.tform(a, j, a.collen - 2 - i, -colc[j] / elec, True, False, True)
-                                b.matx = cls.tform(b, j, a.collen - 2 - i, -colc[j] / elec, True, False, True)
+                                a.matx = cls.tform(a, j, a.collen - 2 - i, - colc[j] / elec, True, False, True)
+                                b.matx = cls.tform(b, j, a.collen - 2 - i, - colc[j] / elec, True, False, True)
                     del elea, elec, cola, colc, j
                     x = a
-                    y = matutils.tpose(b, True).matx[0]
+                    y = matutils.tpose(b, False, True).matx[0]
                     a = list()
                     b = list()
                     c = list()
@@ -712,22 +694,27 @@ class _Calculate(_Predict, matutils):
                     p.pop(-1)
                     return matx(tuple(p), False, True)
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: method => 'inverse'/'uttform'/'gauseidel'/'tridia'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def _regmatrix(cls, d: data, pmpr: tuple[matx, int, Decimal], weigh=False, xmt=None, method='inverse', ret=False) -> dict:
+    def _regmatrix(cls, d: data, pmpr: tuple[matx, int, Decimal], weigh=False, xmt=None, method='inverse', const=True, ret=False) -> dict:
         try:
             match weigh:
                 # performs linear regression using matrix method
                 case False:
-                    d1 = datautils.data1(d)
+                    match const:
+                        case True:
+                            d1 = datautils.data1(d, True)
+                        case False:
+                            d1 = d
+                        case _:
+                            raise Exception("Invalid argument: const=bool")
                     x = d1.getax()
                     y = d1.getay()
                     y.matx = cls._jacobiany(x, y, True)
                     x.matx = cls._hessianx(x, ret=True)
-                    del d1
                 # performs weighted linear regression using matrix method
                 case True:
                     w = cls._weights(d.data[0], xmt, False)
@@ -736,13 +723,12 @@ class _Calculate(_Predict, matutils):
                     d1 = datautils.data1(d)
                     y = d1.getay()
                     x = d1.getax()
-                    xt = matutils.smultfac(w, x, True, True)
+                    xt = matutils.smultfac(w, x, True, False, True)
                     y.matx = cls._jacobiany(xt, y, True)
                     x.matx = cls._hessianx(x, xt, True)
-                    del d1
                     del xt
                 case _:
-                    raise Exception
+                    raise Exception("Invalid argument: weigh => bool")
             p = cls._linsys(x, y, pmpr, method, True)
             if p is None:
                 raise Exception
@@ -750,21 +736,21 @@ class _Calculate(_Predict, matutils):
                 dic = dict()
                 dic["parameters"] = [str(i) for i in p[0].matxl()[0]]
                 dic["iterations"] = p[1]
-                dic["r^2"] = str(cls._coofdet(d.data, p[0], True))
+                dic["r^2"] = str(cls._coofdet(d1.data, p[0], True))
                 if dic["r^2"] is None:
                     raise Exception
                 try:
-                    dic["r^2_adj"] = str(1 - ((1 - Decimal(dic["r^2"])) * (d.datalen - 1) / (d.datalen - d.xvars - 1)))
+                    dic["r^2_adj"] = str(1 - ((1 - Decimal(dic["r^2"])) * (d1.datalen - 1) / (d1.datalen - d1.xvars - 1)))
                 except ZeroDivisionError:
                     dic["r^2_adj"] = 'NaN'
                 return dic
             dic = dict()
             dic["parameters"] = [str(i) for i in p.matxl()[0]]
-            dic["r^2"] = str(cls._coofdet(d.data, p, True))
+            dic["r^2"] = str(cls._coofdet(d1.data, p, True))
             if dic["r^2"] is None:
                 raise Exception
             try:
-                dic["r^2_adj"] = str(1 - ((1 - Decimal(dic["r^2"])) * (d.datalen - 1) / (d.datalen - d.xvars - 1)))
+                dic["r^2_adj"] = str(1 - ((1 - Decimal(dic["r^2"])) * (d1.datalen - 1) / (d1.datalen - d1.xvars - 1)))
             except ZeroDivisionError:
                 dic["r^2_adj"] = 'NaN'
             return dic
@@ -778,18 +764,18 @@ class _Calculate(_Predict, matutils):
             y1 = 0
             y2 = 0
             lx = d[0][0].rowlen
-            x1 = matutils.zerom(1, lx, True)
-            x2 = matutils.zerom(1, lx, True)
+            x1 = matutils.zerom(1, lx, False, True)
+            x2 = matutils.zerom(1, lx, False, True)
             for i in range(len(d[1])):
                 if d[1][i].mele(0, 0) == 0:
                     y1 += 1
-                    x1.matx = matutils.madd(x1, d[0][i], True)
+                    x1.matx = matutils.madd(x1, d[0][i], False, True)
                 else:
-                    x2.matx = matutils.madd(x2, d[0][i], True)
+                    x2.matx = matutils.madd(x2, d[0][i], False, True)
                     y2 += 1
             y1 = Comp.tdeciml(y1)
             y2 = Comp.tdeciml(y2)
-            return {"mean": [matutils.smult(1 / y1, x1, True).matx[0], matutils.smult(1 / y2, x2, True).matxl()[0]],
+            return {"mean": [matutils.smult(1 / y1, x1, False, True).matxl()[0], matutils.smult(1 / y2, x2, False, True).matxl()[0]],
                     "phi": [y1 / (y1 + y2), y2 / (y1 + y2)]}
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -799,15 +785,15 @@ class _Calculate(_Predict, matutils):
     def _cov_n(d: tuple, x1: matx, x2: matx, ret=False) -> dict:
         try:
             xl = d[0][0].rowlen
-            cov = matutils.zerom(xl, xl, True)
+            cov = matutils.zerom(xl, xl, False, True)
             for i in range(len(d[1])):
-                if d[1][i].mele(0, 0, False, True) == 0:
-                    xd = matutils.msub(d[0][i], x1, True)
-                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, True), xd, True), True)
+                if d[1][i].matx[0][0] == 0:
+                    xd = matutils.msub(d[0][i], x1, False, True)
+                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, True), xd, False, True), False, True)
                 else:
-                    xd = matutils.msub(d[0][i], x2, True)
-                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, True), xd, True), True)
-            return {"cov": matutils.smult(Decimal(str(1 / len(d[1]))), cov, True).matxl(), "n": xl}
+                    xd = matutils.msub(d[0][i], x2, False, True)
+                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, True), xd, False, True), False, True)
+            return {"cov": matutils.smult(Decimal(str(1 / len(d[1]))), cov, False, True).matxl(), "n": xl}
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -827,7 +813,7 @@ class _Calculate(_Predict, matutils):
             if miscl is None:
                 raise Exception
             dic1.setdefault("misclassifications", miscl)
-            dic1.update({"mean": [[str(j) for j in i] for i in dic1["mean"]], "cov": [[str(j) for j in i] for i in dic1["cov"]]})
+            dic1.update({"mean": [[str(j) for j in i] for i in dic1["mean"]], "cov": [[str(j) for j in i] for i in dic1["cov"]], "phi": [str(i) for i in dic1["phi"]]})
             return dic1
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -900,7 +886,7 @@ class WeiLinReg(_Calculate):
         try:
             if Comp.tdata(d) is None:
                 raise Exception
-            p = matx(p, True, True)
+            p = matx(p, ret=True)
             if p is None:
                 raise Exception
             a = Comp.tdecimlp(a)
@@ -914,10 +900,7 @@ class WeiLinReg(_Calculate):
                 raise Exception
             if p.rowlen != d.xvars + 1:
                 raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
-            x = Comp.dlist(x)
-            if x is None:
-                raise Exception
-            x = matx(tuple(x), False, True)
+            x = matx(x, ret=True)
             if x.rowlen != d.xvars:
                 raise Exception(str(x.rowlen) + " != " + str(d.xvars))
             t = Comp.tdeciml(t)
@@ -945,10 +928,7 @@ class WeiLinReg(_Calculate):
         try:
             if Comp.tdata(d) is None:
                 raise Exception
-            x = Comp.dlist(x)
-            if x is None:
-                raise Exception
-            x = matx(tuple(x), False, True)
+            x = matx(x, ret=True)
             if x.rowlen != d.xvars:
                 raise Exception(str(x.rowlen) + " != " + str(d.xvars))
             t = Comp.tdeciml(t)
@@ -978,7 +958,7 @@ class LogReg(_Calculate):
         try:
             if Comp.tdata(d) is None:
                 raise Exception
-            p = matx(p, True, True)
+            p = matx(p, ret=True)
             if p is None:
                 raise Exception
             a = Comp.tdecimlp(a)
@@ -1062,59 +1042,44 @@ class GDA(_Calculate):
 class Predict(_Predict):
     
     @classmethod
-    def ylinreg(cls, d: data, p: list, ret=False) -> matx:
+    def ylinreg(cls, d: data, p: list, const=True, ret=False) -> matx:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
-            p = Comp.dlist(p)
-            if p is None:
-                raise Exception
-            p = matx(tuple(p), False, True)
+            p = matx(p, ret=True)
             if p is None:
                 raise Exception
             if p.rowlen != d.xvars + 1:
                 raise Exception(str(p.rowlen) + " != " + str(d.xvars + 1))
-            return matx(tuple([tuple(i) for i in cls._ypredy(d.data, p)]), False, True)
+            return matx(tuple([tuple(i) for i in cls._ypy(d.data, p, const, True)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def linreg(cls, p: list, x: list, ret=False) -> Decimal:
+    def linreg(cls, p: list, x: list, const=True, ret=False) -> Decimal:
         try:
-            p = Comp.dlist([p, x])
+            p = matx(p, ret=True)
             if p is None:
                 raise Exception
-            x = p[1]
-            p = p[0]
-            p = matx(tuple(p), False, True)
-            if p is None:
-                raise Exception
-            x = matx(tuple(x), False, True)
+            x = matx(x, ret=True)
             if x.rowlen + 1 != p.rowlen:
                 raise Exception(str(p.rowlen) + " != " + str(x.rowlen + 1))
-            return cls._predlinreg(p, x, True)
+            return cls._plinreg(p, x, const, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def logreg(cls, p: list, x: list, ret=False) -> int:
+    def logreg(cls, p: list, x: list, const=True, ret=False) -> int:
         try:
-            p = Comp.dlist([p, x])
+            p = matx(p, ret=True)
             if p is None:
                 raise Exception
-            x = p[1]
-            p = p[0]
-            if x is None:
-                raise Exception
-            p = matx(tuple(p), False, True)
-            if p is None:
-                raise Exception
-            x = matx(tuple(x), False, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if x.rowlen + 1 != p.rowlen:
                 raise Exception(str(p.rowlen) + " != " + str(x.rowlen + 1))
-            y = cls._predlogreg(p, x, True)
+            y = cls._plogreg(p, x, const, True)
             if y is True:
                 return 1
             else:
@@ -1127,15 +1092,12 @@ class Predict(_Predict):
         try:
             if Comp.tdict(d) is None:
                 raise Exception
-            x = Comp.dlist(x)
-            if x is None:
-                raise Exception
-            x = matx(tuple(x), False, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if d["n"] != x.rowlen:
                 raise Exception(str(x.rowlen) + " != " + str(d["n"]))
-            y = cls._predgda(d, x, True)
+            y = cls._pgda(d, x, True)
             if y is True:
                 return 1
             else:
@@ -1147,9 +1109,6 @@ class Predict(_Predict):
     def logreggc(cls, d: dict, x: list, ret=False) -> int:
         try:
             if Comp.tdict(d) is None:
-                raise Exception
-            x = Comp.dlist(x)
-            if x is None:
                 raise Exception
             c = dict()
             for i in d.items():
@@ -1174,9 +1133,6 @@ class Predict(_Predict):
     def gdagc(cls, d: dict, x: list, ret=False) -> int:
         try:
             if Comp.tdict(d) is None:
-                raise Exception
-            x = Comp.dlist(x)
-            if x is None:
                 raise Exception
             c = dict()
             for i in d.items():
@@ -1203,7 +1159,7 @@ class SolveFn(funcutils, matutils):
     @staticmethod
     def rootrre(fn: tuple, pos: float, x: list | matx, m=100, pr=0.01, fnt='poly', ret=False) -> dict:
         try:
-            x = matx(x, True, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if x.collen != 1:
@@ -1213,7 +1169,7 @@ class SolveFn(funcutils, matutils):
                 raise Exception
             match fnt:
                 case 'poly':
-                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True)
+                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True, True)
                     if p is None:
                         raise Exception
                     if p.collen != 2:
@@ -1263,15 +1219,15 @@ class SolveFn(funcutils, matutils):
     @staticmethod
     def lininter(fn: tuple, x: list | matx, m=100, pr=0.01, fnt='poly', ret=False) -> dict:
         try:
-            x = matx(x, True, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if x.rowlen != 2:
                 raise Exception(str(x.rowlen) + " != 2")
-            x = matutils.matlxtox(x, True)
+            x = matutils.matlxtox(x, False, True)
             match fnt:
                 case 'poly':
-                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True)
+                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True, True)
                     if p is None:
                         raise Exception
                     if p.collen != 2:
@@ -1305,15 +1261,15 @@ class SolveFn(funcutils, matutils):
     @staticmethod
     def bchop(fn: tuple, x: list | matx, m=100, pr=0.01, fnt='poly', ret=False) -> dict:
         try:
-            x = matx(x, True, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if x.rowlen != 2:
                 raise Exception(str(x.rowlen) + " != 2")
-            x = matutils.matlxtox(x, True)
+            x = matutils.matlxtox(x, False, True)
             match fnt:
                 case 'poly':
-                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True)
+                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True, True)
                     if p is None:
                         raise Exception
                     if p.collen != 2:
@@ -1347,14 +1303,14 @@ class SolveFn(funcutils, matutils):
     @staticmethod
     def nrinter(fn: tuple, x: list | matx, m=100, pr=0.01, fnt='poly', ret=False) -> dict:
         try:
-            x = matx(x, True, True)
+            x = matx(x, ret=True)
             if x is None:
                 raise Exception
             if x.collen != 1:
                 raise Exception(str(x.collen) + " != 1")
             match fnt:
                 case 'poly':
-                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True)
+                    p = matutils.addmatx(matx(fn[0], ret=True), matx(fn[1], ret=True), True, True, True)
                     if p is None:
                         raise Exception
                     if p.collen != 2:
@@ -1364,8 +1320,7 @@ class SolveFn(funcutils, matutils):
                         raise Exception
             value = dict()
             for i in x.matx[0]:
-                c = 0
-                while c < m:
+                while (c := 0) < m:
                     nx = i - (p.val(i) / p.dval(i))
                     if p.val(nx) < pr:
                         value[str(i)] = (str(nx), c, )
@@ -1387,6 +1342,7 @@ class SolveFn(funcutils, matutils):
 # a = 0.00196
 # b = LinReg.grades(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [0, 1, 1, 1], a, 1000, 0.01, ret=True)
 # print(b)
+# print(Predict.linreg(b["parameters"], [2,3,6]))
 # print('2')
 # c = WeiLinReg.matrix(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [2, 6, 4])
 # print(c)
@@ -1398,6 +1354,7 @@ class SolveFn(funcutils, matutils):
 #    data([[10, 10, 10], [5, 7, 9], [4, 2, 7], [5, 9, 1], [20, 20, 20], [21, 25, 22], [14, 18, 12], [12, 15, 11]],
 #         [[0], [0], [0], [0], [1], [1], [1], [1]]), [-10, 1, 1, 1], 0.01, 1000)
 # print(d)
+# print(Predict.logreg(d["parameters"], [5, 7, 9]), Predict.logreg(d["parameters"], [14, 18, 12]))
 # a = GDA.gda(
 #    data([[10, 10, 10], [5, 7, 9], [4, 2, 7], [5, 9, 1], [20, 20, 20], [21, 25, 22], [14, 18, 12], [12, 15, 11]],
 #         [[0], [0], [0], [0], [1], [1], [1], [1]]))

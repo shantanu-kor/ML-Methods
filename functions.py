@@ -1,17 +1,15 @@
 # import math
 from decimal import Decimal
-from matrix import matx, matutils
+from matrix import matx, matutils, pwr
 from cmdexec import Terminate, Comp
-from utils import pwr
 
 
 class axn:
     def __init__(self, f: list | matx, chk=True, ret=False) -> None:
-        if chk is True:
-            f = matx(f, True, True)
-            if f is None:
-                Terminate.retrn(ret, "Invalid axn\n")
-            if f.collen != 1 or f.rowlen != 2:
+        f = matx(f, chk, True)
+        if f is None:
+            Terminate.retrn(ret, "Invalid axn\n")
+        if f.collen != 1 or f.rowlen != 2:
                 Terminate.retrn(ret, "Invalid axn\n")
         self.f = f
         if self.f.mele(0, 1, False, True) == 0:
@@ -26,7 +24,7 @@ class axn:
 
 
 class poly:
-    def __init__(self, f: matx | tuple[axn], ret=False) -> None:
+    def __init__(self, f: matx | tuple[axn, ...], ret=False) -> None:
         try:
             if type(f) is tuple:
                 for i in f:
@@ -37,11 +35,11 @@ class poly:
                 if Comp.tmatx(f) is not None:
                     if f.collen != 2:
                         raise Exception(str(f.collen)+" != 2")
-                self.f = tuple([axn(i, False, True) for i in matutils.matlxtox(matutils.tpose(f, True), True)])
+                self.f = tuple([axn(i, False, True) for i in matutils.matlxtox(matutils.tpose(f, False, True), False, True)])
             self.df = tuple([axn(i.df, False, True) for i in self.f if i.df is not None])
             del f
-            self.val = lambda x: sum([_.val(x) for _ in self.f])
-            self.dval = lambda x: sum([_.val(x) for _ in self.df])
+            self.val = lambda x: sum([i.val(x) for i in self.f])
+            self.dval = lambda x: sum([i.val(x) for i in self.df])
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -67,7 +65,7 @@ class apolyn:
         self.dval = lambda x: self.afn.dval(self.f.val(x)) * self.df.val(x)
 
 
-class funcutils:
+class funcutils(matutils):
     @staticmethod
     def rearr(a, pos: int, ret=False) -> apolyn:
         try:
@@ -76,7 +74,7 @@ class funcutils:
             ta = a.__class__.__name__
             match ta:
                 case 'poly':
-                    return apolyn(pwr(1/a.f[pos].f.mele(0, 0, False, True), 1/a.f[pos].f.mele(0, 1, False, True)), 1/a.f[pos].f.mele(0, 1, False, True), poly(tuple([axn(matutils.smultfac(tuple([-1, 1]), i[1].f, False, True), False, True) for i in enumerate(a.f) if i[0] != pos]), True), ret=True)
+                    return apolyn(pwr(1/a.f[pos].f.mele(0, 0, False, True), 1/a.f[pos].f.mele(0, 1, False, True)), 1/a.f[pos].f.mele(0, 1, False, True), poly(tuple([axn(matutils.smultfac(tuple([-1, 1]), i[1].f, False, False, True), False, True) for i in enumerate(a.f) if i[0] != pos]), True), ret=True)
                 case _:
                     raise Exception
         except Exception as e:
@@ -92,12 +90,4 @@ class funcutils:
 
     @staticmethod
     def polytoan(f: poly) -> tuple[matx, matx]:
-        x = [i.f for i in f.f]
-        for i in enumerate(x):
-            if i[0] == 0:
-                a = i[1]
-            else:
-                a.matx = matutils.addmatx(a, i[1], True, True)
-        n = matx(a.gele([1, ], False, False, True), False, True)
-        a = matx(a.gele([0, ], False, False, True), False, True)
-        return a, n
+        return matutils.matlxtox(matutils.tpose(matutils.matxtolx(tuple([i.f for i in f.f]))))

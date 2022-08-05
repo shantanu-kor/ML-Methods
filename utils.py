@@ -5,16 +5,6 @@ from matrix import matx, matutils
 from cmdexec import Terminate, Comp
 
 
-def pwr(a: Decimal | int, b: Decimal | int) -> Decimal:
-    if a == 0 and b == 0:
-        return Decimal('1')
-    else:
-        d = Comp.tdeciml(pow(a, b))
-        if d is None:
-            return Decimal('NaN')
-        return d
-
-
 class _Output:
     # save the regression output
     @classmethod

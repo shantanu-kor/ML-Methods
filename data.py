@@ -1,8 +1,7 @@
 import math
 from decimal import Decimal
-from matrix import matx, matutils
+from matrix import matx, matutils, pwr
 from cmdexec import Terminate, Comp
-from utils import pwr
 
 
 class Data:
@@ -43,7 +42,7 @@ class Data:
             x = matx(x, True, True)
             if x is None:
                 raise Exception
-            return matutils.matlxtox(x, True)
+            return matutils.matlxtox(x, False, True)
         except Exception as e:
             Terminate.retrn(True, "Invalid list: x\n"+str(e))
 
@@ -62,9 +61,9 @@ class Data:
             if y is None:
                 raise Exception
             if y.collen == 1:
-                return matutils.matlxtox(matutils.tpose(y, True), True)
+                return matutils.matlxtox(matutils.tpose(y, False, True), False, True)
             else:
-                return matutils.matlxtox(y, True)
+                return matutils.matlxtox(y, False, True)
         except Exception as e:
             Terminate.retrn(True, "Invalid list: y\n"+str(e))
 
@@ -94,11 +93,11 @@ class data:
 
     # returns all x
     def getax(self) -> matx:
-        return matutils.matxtolx(self.data[0], True)
+        return matutils.matxtolx(self.data[0], False, True)
 
     # returns all y
     def getay(self) -> matx:
-        return matutils.matxtolx(self.data[1], True)
+        return matutils.matxtolx(self.data[1], False, True)
 
     # returns x values from data
     def getx(self, li, chk=True, ret=False) -> tuple:
@@ -164,10 +163,6 @@ class data:
         except Exception as e:
             Terminate.retrn(ret, e)
 
-    # returns data with 1 at [0] of x
-    def data1(self) -> tuple:
-        return tuple([matutils.maddone(i, True) for i in self.data[0]]), self.data[1]
-
 
 class datautils:
     @staticmethod
@@ -175,8 +170,7 @@ class datautils:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
-            d = d.data1()
-            return data(d[0], d[1], False, True)
+            return data(tuple([matutils.maddone(i, False, True) for i in d.data[0]]), d.data[1], False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -184,14 +178,7 @@ class datautils:
     @staticmethod
     def addata(d: data, a: tuple, chk=True, ret=False) -> data:
         try:
-            if Comp.tdata(d) is None:
-                raise Exception
-            if Comp.ttup(a) is None:
-                raise Exception
-            if d.datalen != len(a):
-                raise Exception(str(d.datalen) + " != " + str(len(a)))
-            return data(tuple([matutils.addmatx(d.data[0][i], a[i], False, True) for i in range(d.datalen)]), d.data[1], chk,
-                        True)
+            return data(tuple([matutils.addmatx(d.data[0][i], a[i], False, chk, True) for i in range(d.datalen)]), d.data[1], False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -208,7 +195,7 @@ class datautils:
 
     # add powers of x at listed positions to data
     @classmethod
-    def powlx(cls, d: data, p: list, pw: float, ret=False) -> data:
+    def powlx(cls, d: data, p: list, pw: float, a=1.0, ret=False) -> data:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -218,8 +205,11 @@ class datautils:
             pw = Comp.tdeciml(pw)
             if pw is None:
                 raise Exception
+            a = Comp.tdeciml(a)
+            if a is None:
+                raise Exception
             return cls.addata(d, tuple(
-                [matx(tuple([pwr(j, pw) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                [matx(tuple([pwr(a*j, pw) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -259,24 +249,7 @@ class datautils:
 
     # append log of x at listed positions to data
     @classmethod
-    def loglx(cls, d: data, p: list, b=math.e, ret=False) -> data:
-        try:
-            if Comp.tdata(d) is None:
-                raise Exception
-            p = Comp.intele(p, d.xvars)
-            if p is None:
-                raise Exception
-            b = Comp.tdeciml(b)
-            if b is None or b <= 0:
-                raise Exception
-            return cls.addata(d, tuple(
-                [matx(tuple([Decimal(str(math.log(j, b))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
-    # append x at listed positions as a power to data
-    @classmethod
-    def expolx(cls, d: data, p: list, a=math.e, ret=False) -> data:
+    def loglx(cls, d: data, p: list, a=1.0, b=math.e, ret=False) -> data:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -284,48 +257,75 @@ class datautils:
             if p is None:
                 raise Exception
             a = Comp.tdeciml(a)
-            if a is None or a < 0:
+            if a is None:
+                raise Exception
+            b = Comp.tdecimlp(b)
+            if b is None:
                 raise Exception
             return cls.addata(d, tuple(
-                [matx(tuple([pwr(a, j) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                [matx(tuple([Decimal(str(math.log(a*j, b))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
-    
+
+    # append x at listed positions as a power to data
     @classmethod
-    def triglx(cls, d: data, p: list, f='cos', ret=False) -> data:
+    def expolx(cls, d: data, p: list, a=math.e, t=1.0, ret=False) -> data:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
             p = Comp.intele(p, d.xvars)
             if p is None:
                 raise Exception
-            match f:
-                case 'cos':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.cos(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'sin':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.sin(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'tan':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.tan(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'sec':
-                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.cos(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'cosec':
-                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.sin(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'cot':
-                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.tan(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'acos':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.acos(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'asin':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.asin(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'atan':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.atan(j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'asec':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.acos(1 / Decimal(str(j))))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'acosec':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.asin(1 / Decimal(str(j))))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
-                case 'acot':
-                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.atan(1 / Decimal(str(j))))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+            a = Comp.tdeciml(a)
+            if a is None:
+                raise Exception
+            t = Comp.tdeciml(t)
+            if t is None:
+                raise Exception
+            return cls.addata(d, tuple(
+                [matx(tuple([pwr(a, t*j) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
+    
+    @classmethod
+    def triglx(cls, d: data, p: list, f='cos', a=1.0, ret=False) -> data:
+        try:
+            if Comp.tdata(d) is None:
+                raise Exception
+            p = Comp.intele(p, d.xvars)
+            if p is None:
+                raise Exception
+            a = Comp.tdeciml(a)
+            if a is None:
+                raise Exception
+            match f:
+                case 'cos':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.cos(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'sin':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.sin(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'tan':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.tan(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'sec':
+                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.cos(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'cosec':
+                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.sin(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'cot':
+                    return cls.addata(d, tuple([matx(tuple([1 / Decimal(str(math.tan(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'acos':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.acos(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'asin':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.asin(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'atan':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.atan(a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'asec':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.acos(1 / a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'acosec':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.asin(1 / a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+                case 'acot':
+                    return cls.addata(d, tuple([matx(tuple([Decimal(str(math.atan(1 / a*j))) for j in i]), False, True) for i in d.getlx(p, False, True)]), False, True)
+        except Exception as e:
+            Terminate.retrn(ret, e)
+    
 
 # a = [[1, 2, 2], [2, 3, 4], [7.9999999, 3, 2]]
 # b = [3, ]

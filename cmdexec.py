@@ -65,35 +65,46 @@ class Terminate(_terminate):
 
 
 class Comp:
+
+    @staticmethod
+    def eqval(a, b) -> bool:
+        try:
+            if a == b:
+                return True
+            else:
+                raise Exception(str(a) + " != " + str(b))
+        except Exception as e:
+            Terminate.retrn(True, e)
+
     # return True if matx
     @staticmethod
-    def tmatx(a) -> bool:
+    def tmatx(a, b=None) -> bool:
         try:
-            if type(a) is list or type(a) is tuple:
+            if (ta := a.__class__.__name__) == 'matx':
+                return True
+            if (ta == 'list' or ta == 'tuple') and b is True:
                 for i in a:
-                    if i.__class__.__name__ != 'matx':
-                        raise Exception(str(type(i)) + " is not matx")
+                    if (ti := i.__class__.__name__) != 'matx':
+                        raise Exception(ti + " is not matx")
                 return True
-            if a.__class__.__name__ != 'matx':
-                raise Exception(str(type(a)) + " is not matx")
             else:
-                return True
+                raise Exception(ta + " is not matx")
         except Exception as e:
             Terminate.retrn(True, e)
 
     # return True if bool
     @staticmethod
-    def tbool(a: bool | list[bool] | tuple[bool]) -> bool:
+    def tbool(a: bool | list[bool] | tuple[bool], b=None) -> bool:
         try:
-            if type(a) is list or type(a) is tuple:
+            if (ta := a.__class__.__name__) == 'bool':
+                return True
+            if (ta == 'list' or ta == 'tuple') and b is True:
                 for i in a:
-                    if type(i) is not bool:
-                        raise Exception(str(type(i)) + " is not bool")
+                    if (ti := i.__class__.__name__) != 'bool':
+                        raise Exception(ti + " is not bool")
                 return True
-            if type(a) is not bool:
-                raise Exception(str(type(a)) + " is not bool")
             else:
-                return True
+                raise Exception(ta + " is not bool")
         except Exception as e:
             Terminate.retrn(True, e)
 
@@ -101,16 +112,18 @@ class Comp:
     @staticmethod
     def ttup(a: tuple | tuple[tuple]) -> bool:
         try:
-            if type(a) is tuple:
-                if type(a[0]) is tuple:
-                    for i in a:
-                        if type(i) is not tuple:
-                            raise Exception(str(type(i)) + " is not tuple")
+            if (ta := a.__class__.__name__) == 'tuple':
+                if (ta0 := a[0].__class__.__name__) == ta:
+                    for i in range(len(a)):
+                        if i == 0:
+                            continue
+                        if (ti := a[i].__class__.__name__) != ta0:
+                            raise Exception(ti + " is not tuple")
                     return True
                 else:
                     return True
             else:
-                raise Exception(str(type(a)) + " is not tuple")
+                raise Exception(ta + " is not tuple")
         except Exception as e:
             Terminate.retrn(True, e)
 
@@ -118,16 +131,18 @@ class Comp:
     @staticmethod
     def tlist(a: list | list[list]) -> bool:
         try:
-            if type(a) is list:
-                if type(a[0]) is list:
-                    for i in a:
-                        if type(i) is not list:
-                            raise Exception(str(type(i)) + " is not list")
+            if (ta := a.__class__.__name__) == 'list':
+                if (ta0 := a[0].__class__.__name__) == ta:
+                    for i in range(len(a)):
+                        if i == 0:
+                            continue
+                        if (ti := a[i].__class__.__name__) != ta0:
+                            raise Exception(ti + " is not list")
                     return True
                 else:
                     return True
             else:
-                raise Exception(str(type(a)) + " is not list")
+                raise Exception(ta + " is not list")
         except Exception as e:
             Terminate.retrn(True, e)
 
@@ -137,11 +152,12 @@ class Comp:
         try:
             if cls.tlist(a) is None:
                 raise Exception
-            l1 = a[0]
             for i in range(len(a)):
+                if i == 0:
+                    l0 = len(a[i])
                 if i > 0:
-                    if len(l1) != len(a[i]):
-                        raise Exception(str(len(l1)) + " != " + str(len(a[i])))
+                    if (li := len(a[i])) != l0:
+                        raise Exception(li + " != " + l0)
             else:
                 return True
         except Exception as e:
@@ -153,11 +169,12 @@ class Comp:
         try:
             if cls.ttup(a) is None:
                 raise Exception
-            l1 = a[0]
             for i in range(len(a)):
+                if i == 0:
+                    l0 = len(a[i])
                 if i > 0:
-                    if len(l1) != len(a[i]):
-                        raise Exception(str(len(l1)) + " != " + str(len(a[i])))
+                    if (li := len(a[i])) != l0:
+                        raise Exception(li + " != " + l0)
             else:
                 return True
         except Exception as e:
@@ -165,16 +182,26 @@ class Comp:
 
     # return true if i is valid element index
     @classmethod
-    def intele(cls, i: int | float | list, ln: int | float) -> list:
+    def intele(cls, i: int | float | list[int | float] | tuple[int | float], ln: int | float) -> int | list[int] | tuple[int]:
         try:
             ln = cls.tintn(ln)
             if ln is None:
                 raise Exception
-            if type(i) is int:
-                i = [i, ]
-            i = cls.iwlist(i)
-            if i is None:
-                raise Exception
+            if (ti := i.__class__.__name__) == 'int' or ti == 'float':
+                i = cls.tintw(i)
+                if i > ln - 1:
+                    raise Exception(str(i) + " is more than " + str(ln - 1))
+                return i
+            elif ti == 'list':
+                i = cls.iwlist(i)
+                if i is None:
+                    raise Exception
+            elif ti == 'tuple':
+                i = cls.iwtup(i)
+                if i is None:
+                    raise Exception
+            else:
+                raise Exception("Invalid argument: i")
             for j in i:
                 if j > ln - 1:
                     raise Exception(str(j) + " is more than " + str(ln - 1))
@@ -216,14 +243,14 @@ class Comp:
     @staticmethod
     def tint(i: int | float) -> int:
         try:
-            if type(i) is not int:
-                if type(i) is not float:
-                    raise Exception(str(type(i)) + " is not int")
+            if (ti := i.__class__.__name__) != 'int':
+                if ti != 'float':
+                    raise Exception(ti + " is not int")
                 else:
                     if i == int(i):
                         return int(i)
                     else:
-                        raise Exception(str(type(i)) + " is not int")
+                        raise Exception(ti + " is not int")
             else:
                 return i
         except Exception as e:
@@ -237,81 +264,57 @@ class Comp:
         except Exception as e:
             Terminate.retrn(True, e)
 
-    # check and return list with float elements
     @classmethod
-    def dlist(cls, li: list) -> list:
+    def dlist(cls, li: list) -> list[Decimal]:
         try:
             if cls.tlist(li) is not None:
-                ln = list()
-                if type(li[0]) is list:
-                    for i in li:
-                        ln1 = list()
-                        if type(i) is not list:
-                            raise Exception(str(type(i))+" is not list")
-                        for j in i:
-                            a = cls.tdeciml(j)
-                            if a is None:
-                                raise Exception(str(j) + " is not float")
-                            else:
-                                ln1.append(a)
-                        ln.append(ln1)
-                    return ln
+                if li[0].__class__.__name__ == 'list':
+                    return [[cls.tdeciml(j) for j in i] for i in li]
                 else:
-                    for i in li:
-                        a = cls.tdeciml(i)
-                        if a is None:
-                            raise Exception(str(i[0]) + " is not float")
-                        else:
-                            ln.append(a)
-                    return ln
+                    return [cls.tdeciml(i) for i in li]
             else:
                 raise Exception
         except Exception as e:
-            Terminate.retrn(True, e)
+            Terminate.retrn(True, str(e) + "Error: Cannot convert to Decimal")
 
-    # check and return tuple with float elements
     @classmethod
-    def dtup(cls, li: tuple) -> tuple:
+    def dtup(cls, li: tuple) -> tuple[Decimal]:
         try:
             if cls.ttup(li) is not None:
-                ln = list()
-                if type(li[0]) is tuple:
-                    for i in li:
-                        ln1 = list()
-                        for j in i:
-                            a = cls.tdeciml(j)
-                            if a is None:
-                                raise Exception(str(j) + " is not float")
-                            else:
-                                ln1.append(a)
-                        ln.append(tuple(ln1))
-                    return tuple(ln)
+                if li[0].__class__.__name__ == 'tuple':
+                    return tuple([tuple([cls.tdeciml(j) for j in i]) for i in li])
                 else:
-                    for i in li:
-                        a = cls.tdeciml(i)
-                        if a is None:
-                            raise Exception(str(i) + " is not float")
-                        else:
-                            ln.append(a)
-                    return tuple(ln)
+                    return tuple([cls.tdeciml(i) for i in li])
             else:
                 raise Exception
         except Exception as e:
-            Terminate.retrn(True, e)
+            Terminate.retrn(True, str(e) + "Error: Cannot convert to Decimal")
 
-    # check and return list with int elements
     @classmethod
-    def iwlist(cls, li: list) -> list:
+    def iwlist(cls, li: list) -> list[int]:
         try:
             if cls.tlist(li) is not None:
                 ln = list()
                 for i in li:
-                    a = cls.tintw(i)
-                    if a is None:
-                        raise Exception(str(i) + " is not a whole number")
-                    else:
-                        ln.append(a)
+                    ln.append((vi := cls.tintw(i)))
+                    if vi is None:
+                        raise Exception(str(i) + " is not a whole number")    
                 return ln
+            else:
+                raise Exception
+        except Exception as e:
+            Terminate.retrn(True, e)
+    
+    @classmethod
+    def iwtup(cls, li: tuple) -> tuple[int]:
+        try:
+            if cls.ttup(li) is not None:
+                ln = list()
+                for i in li:
+                    ln.append((vi := cls.tintw(i)))
+                    if vi is None:
+                        raise Exception(str(i) + " is not a whole number")
+                return tuple(ln)
             else:
                 raise Exception
         except Exception as e:
@@ -321,13 +324,13 @@ class Comp:
     @staticmethod
     def tdata(d) -> bool:
         try:
-            if type(d) is list:
+            if (td := d.__class__.__name__) == 'list':
                 for i in d:
-                    if i.__class__.__name__ != 'data':
-                        raise Exception(str(type(i)) + " is not data")
+                    if (ti := i.__class__.__name__) != 'data':
+                        raise Exception(ti + " is not data")
                 return True
-            if d.__class__.__name__ != 'data':
-                raise Exception(str(type(d)) + " is not data")
+            if td != 'data':
+                raise Exception(td + " is not data")
             else:
                 return True
         except Exception as e:
@@ -344,17 +347,17 @@ class Comp:
                 raise Exception(str(a) + " is not positive")
             return an
         except Exception as e:
-            print(e)
+            Terminate.retrn(True, e)
 
     @staticmethod
     def tdict(a: dict) -> bool:
         try:
-            if type(a) is dict:
+            if (ta := a.__class__.__name__) == 'dict':
                 return True
             else:
-                raise Exception(str(type(a)) + " is not dict")
+                raise Exception(ta + " is not dict")
         except Exception as e:
-            print(e)
+            Terminate.retrn(True, e)
 
     @classmethod
     def matchkeys(cls, a: dict, b: dict) -> bool:
@@ -363,34 +366,42 @@ class Comp:
                 raise Exception
             a = a.keys()
             b = list(b.keys())
-            if len(a) != len(b):
-                raise Exception(str(len(a)) + " != " + str(len(b)))
-            for i in a:
-                if i in b:
-                    b.remove(i)
-                else:
-                    raise Exception("Keys are not same")
-            return True
-        except Exception as e:
-            print(e)
+            if (la := len(a)) != (lb := len(b)):
+                raise Exception(la + " != " + lb)
+            [b.remove(i) for i in a]
+            if len(b) == 0:
+                return True
+            else:
+                raise Exception
+        except Exception:
+            Terminate.retrn(True, "Keys are not same")
 
     @staticmethod
     def taxn(a) -> bool:
-        if a.__class__.__name__ != 'axn':
-            Terminate.retrn(True, str(type(a)) + " is not axn")
-        else:
-            return True
+        try:
+            if (ta := a.__class__.__name__) != 'axn':
+                raise Exception(True, ta + " is not axn")
+            else:
+                return True
+        except Exception as e:
+            Terminate.retrn(True, e)
 
     @staticmethod
     def tpoly(a) -> bool:
-        if a.__class__.__name__ != 'poly':
-            Terminate.retrn(True, str(type(a)) + " is not poly")
-        else:
-            return True
+        try:
+            if (ta := a.__class__.__name__) != 'poly':
+                raise Exception(True, ta + " is not poly")
+            else:
+                return True
+        except Exception as e:
+            Terminate.retrn(True, e)
 
     @staticmethod
     def tapolyn(a) -> bool:
-        if a.__class__.__name__ != 'apolyn':
-            Terminate.retrn(True, str(type(a)) + " is not apolyn")
-        else:
-            return True
+        try:
+            if (ta := a.__class__.__name__) != 'apolyn':
+                raise Exception(True, ta + " is not apolyn")
+            else:
+                return True
+        except Exception as e:
+            Terminate.retrn(True, e)
