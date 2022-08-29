@@ -115,6 +115,7 @@ class _Predict(matutils):
                     raise Exception("Invalid argument: const => bool")
             x = [matutils.tpose(i, False, True) for i in matutils.dpose(x, p1.n, chk=False, ret=True)]
             h = 1 / (1 + pwr(Decimal(str(math.e)), -1 * sum([matutils.mmult(i[1], x[i[0]], False, True).matx[0][0] for i in enumerate(p1.val(p.matx[0]))])))
+            h = [h[0]*Decimal(d["phi"][0]), h[1]*Decimal(d["phi"][1])]
             if h is None:
                 raise Exception
             if h < 0.5:
@@ -275,10 +276,8 @@ class _Calculate(_Predict, matutils):
                     match wt:
                         case 'NoneType':
                             return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(d[0].val(p1.dval(p.matx[0])), False, True), matutils.msub(matx(tuple([(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
-                        case 'tuple':
-                            return matutils.madd(p, matutils.tpose(matutils.smult(-a, matutils.mmult(matutils.tpose(matutils.smultfac(w, d[0].val(p1.dval(p.matx[0])), chk=False, ret=True), False, True), matutils.msub(matx(tuple([(1 / (1 + pwr(Decimal(str(math.e)), -sum(i))),) for i in d[0].val(p1.val(p.matx[0])).matx]), False, True), d[1], False, True), False, True), False, True), False, True), False, True)
                         case _:
-                            raise Exception("Invalid argument: w => None/(weights, ...)")
+                            raise Exception("Invalid argument: w => None")
                 case _:
                     raise Exception("Invalid argument: reg => 'linreg'/'logreg'")
         except Exception as e:
@@ -398,8 +397,6 @@ class _Calculate(_Predict, matutils):
                         match weigh:
                             case False:
                                 pn = cls._nextp(d1, p, a, p1, reg=reg, ret=True)
-                            case True:
-                                pn = cls._nextp(d1, p, a, p1, w, reg, ret=True)
                             case _:
                                 raise Exception("Invalid argument: weigh => bool")
                     case _:
