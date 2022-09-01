@@ -382,8 +382,8 @@ class _Calculate(_Predict, matutils):
                 case _:
                     raise Exception("Invalid argument: scale => bool")
             d1 = (function(tuple([matutils.dpose(i, li, chk=False, ret=True) for i in matutils.matlxtox(d.data[0])]), True), d.getay())
-            while (c := 0) < m:
-                c += 1
+            c = 0
+            while (c := c + 1) <= m:
                 match reg:
                     case 'linreg':
                         match weigh:
@@ -613,8 +613,8 @@ class _Calculate(_Predict, matutils):
                             elif j < i:
                                 lts += lt.mele(i, j, False, True)
                     if math.fabs(lts) > math.fabs(uts):
-                        while (c := 0) < m:
-                            c += 1
+                        c = 0
+                        while (c := c + 1) <= m:
                             pn = cls._lup(lt, ut, p, b)
                             if pn is None:
                                 raise Exception
@@ -628,8 +628,8 @@ class _Calculate(_Predict, matutils):
                                         "inf") or pn.mele(0, i, False, True) == float("-inf"):
                                     raise Exception("parameter", i, "is ", pn.mele(0, i, False, True))
                     else:
-                        while (c := 0) < m:
-                            c += 1
+                        c = 0
+                        while (c := c + 1) <= m:
                             pn = cls._ulp(ut, lt, p, b)
                             if pn is None:
                                 raise Exception
@@ -1168,8 +1168,7 @@ class SolveFn(funcutils, matutils):
             for i in xn:
                 xi = i
                 c = 0
-                while c < m:
-                    c += 1
+                while (c := c + 1) <= m:
                     val = xre.val(xi)
                     valy = p.val(val)
                     if str(valy) == 'NaN':
@@ -1208,8 +1207,7 @@ class SolveFn(funcutils, matutils):
                 p1 = (i.mele(0, 0, False, True), p.val(i.mele(0, 0, False, True)))
                 p2 = (i.mele(0, 1, False, True), p.val(i.mele(0, 1, False, True)))
                 if p1[1]*p2[1] < 0:
-                    while c < m:
-                        c += 1
+                    while (c := c + 1) <= m:
                         valx = (((p1[0] - p2[0]) * (- p1[1])) / (p1[1] - p2[1])) + p1[0]
                         p3 = (valx, p.val(valx))
                         if str(p3[1]) == 'NaN':
@@ -1250,8 +1248,7 @@ class SolveFn(funcutils, matutils):
                 p1 = (i.mele(0, 0, False, True), p.val(i.mele(0, 0, False, True)))
                 p2 = (i.mele(0, 1, False, True), p.val(i.mele(0, 1, False, True)))
                 if p1[1]*p2[1] < 0:
-                    while c < m:
-                        c += 1
+                    while (c := c + 1) <= m:
                         mid = (p1[0] + p2[0]) / 2
                         p3 = (mid, p.val(mid))
                         if str(p3[1]) == 'NaN':
@@ -1287,7 +1284,8 @@ class SolveFn(funcutils, matutils):
                         raise Exception
             value = dict()
             for i in x.matx[0]:
-                while (c := 0) < m:
+                c = 0
+                while (c := c + 1) <= m:
                     nx = i - (p.val(i) / p.dval(i))
                     if p.val(nx) < pr:
                         value[str(i)] = (str(nx), c, )
