@@ -30,7 +30,7 @@ class Data:
     @classmethod
     def __xcheck(cls, x) -> tuple:
         try:
-            if type(x) is tuple:
+            if x.__class__.__name__ == 'tuple' and x[0].__class__.__name__ == 'matx':
                 return matutils.matxtolx(x, True, True)
             x = matx(x, True, True)
             if x is None:
@@ -42,7 +42,7 @@ class Data:
     @classmethod
     def __ycheck(cls, y) -> tuple:
         try:
-            if type(y) is tuple:
+            if y.__class__.__name__ == 'tuple' and y[0].__class__.__name__ == 'matx':
                 return matutils.matxtolx(y, True, True)
             y = matx(y, True, True)
             if y is None:
