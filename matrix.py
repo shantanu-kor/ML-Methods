@@ -195,15 +195,15 @@ class matx:
 class matutils:
     # returns identity matrix of size nxn
     @staticmethod
-    def sclrm(n: int, i: int | float | Decimal, chk=True, ret=False) -> matx:
+    def sclrm(n: int, el: Decimal, chk=True, ret=False) -> matx:
         try:
             match chk:
                 case False:
                     pass
                 case True:
                     n = Comp.tintn(n)
-                    i = Comp.tdeciml(i)
-                    if n is None or i is None:
+                    el = Comp.tdeciml(el)
+                    if n is None or el is None:
                         raise Exception
                 case _:
                     raise Exception("Invalid argument: chk => bool")
@@ -212,7 +212,7 @@ class matutils:
                 l1 = list()
                 for j in range(n):
                     if i == j:
-                        l1.append(i)
+                        l1.append(el)
                     else:
                         l1.append(Decimal('0.0'))
                 m.append(tuple(l1))
@@ -222,7 +222,7 @@ class matutils:
 
     # returns 0 matrix of size mxn
     @staticmethod
-    def eqelm(m: int, n: int, i: int | float | Decimal, chk=True, ret=False) -> matx:
+    def eqelm(m: int, n: int, i: Decimal, chk=True, ret=False) -> matx:
         try:
             match chk:
                 case True:
@@ -268,16 +268,19 @@ class matutils:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def maddone(cls, a: matx, chk=True, ret=False) -> matx:
+    def maddval(cls, a: matx, x: Decimal, chk=True, ret=False) -> matx:
         try:
             match chk:
                 case False:
-                    a1 = cls.eqelm(a.collen, 1, Decimal('1.0'), False, True)
+                    a1 = cls.eqelm(a.collen, 1, x, False, True)
                     return cls.addmatx(a1, a, False, False, True)
                 case True:
                     if Comp.tmatx(a) is None:
                         raise Exception
-                    a1 = cls.eqelm(a.collen, 1, Decimal('1.0'), False, True)
+                    x = Comp.tdeciml(x)
+                    if x is None:
+                        raise Exception
+                    a1 = cls.eqelm(a.collen, 1, x, False, True)
                     return cls.addmatx(a1, a, False, False, True)
                 case _:
                     raise Exception("Invalid argument: chk => bool")
@@ -409,7 +412,7 @@ class matutils:
                 d = a.mele(0, 0, False, True)
             else:
                 d = 0
-                ep = int()
+                ep = None
                 ele = a.mele(0, 0, False, True)
                 li = a.mrow(0, True)
                 if ele == 0:
@@ -515,8 +518,8 @@ class matutils:
                                 if j == a.rowlen - 1:
                                     if ele != 0:
                                         a.matx = cls.tform(a, i + 1, i, Decimal('1'), False, False, True)
-                                        a.matx = cls.tform(a, i, i + 1, (1 / ele) - 1, False, False, True)
                                         b.matx = cls.tform(b, i + 1, i, Decimal('1'), False, False, True)
+                                        a.matx = cls.tform(a, i, i + 1, (1 / ele) - 1, False, False, True)
                                         b.matx = cls.tform(b, i, i + 1, (1 / ele) - 1, False, False, True)
                                     else:
                                         raise Exception("Error: Invalid Matrix Inverse")
@@ -643,23 +646,34 @@ class matutils:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def smultfac(cls, a: tuple, b: matx, r=True, chk=True, ret=False) -> matx:
+    def smultfac(cls, a: tuple | list, b: matx, r=True, chk=True, ret=False) -> matx:
         try:
             match chk:
                 case False:
                     pass
                 case True:
-                    a = Comp.dtup(a)
-                    if a is None:
-                        raise Exception
+                    match a.__class__.__name__:
+                        case 'tuple':
+                            a = Comp.dtup(a)
+                            if a is None:
+                                raise Exception
+                        case 'list':
+                            a = Comp.dlist(a)
+                            if a is None:
+                                raise Exception
+                        case _:
+                            raise Exception("Invalid argument: a => tuple/list")
                     if Comp.tmatx(b) is None:
                         raise Exception
-                    if r is True:
-                        if Comp.eqval(len(a), b.collen) is None:
-                            raise Exception
-                    else:
-                        if Comp.eqval(len(a), b.rowlen) is None:
-                            raise Exception
+                    match r:
+                        case True:
+                            if Comp.eqval(len(a), b.collen) is None:
+                                raise Exception
+                        case False:
+                            if Comp.eqval(len(a), b.rowlen) is None:
+                                raise Exception
+                        case _:
+                            raise Exception("Invalid argument: r => bool")
                 case _:
                     raise Exception("Invalid argument: chk => bool")
             if r is True:
@@ -802,14 +816,24 @@ class matutils:
             Terminate.retrn(ret, e)
 
     @classmethod
-    def powmel(cls, an: list[Decimal | float | int], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
+    def powmel(cls, an: list[Decimal] | tuple[Decimal, Decimal], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
         try:
             match chk:
                 case False:
                     pass
                 case True:
-                    an = Comp.dlist(an)
-                    if an is None or Comp.eqval(len(an), 2) is None:
+                    match an.__class__.__name__:
+                        case 'tuple':
+                            an = Comp.dtup(an)
+                            if an is None:
+                                raise Exception
+                        case 'list':
+                            an = Comp.dlist(an)
+                            if an is None:
+                                raise Exception
+                        case _:
+                            raise Exception("Invalid argument: a => tuple/list")
+                    if Comp.eqval(len(an), 2) is None:
                         raise Exception
                 case _:
                     raise Exception("Invalid argument: chk => bool")
@@ -819,33 +843,53 @@ class matutils:
 
 
     @classmethod
-    def logmel(cls, an: list[Decimal | float | int], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
+    def logmel(cls, an: list[Decimal] | tuple[Decimal, Decimal], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
         match chk:
             case False:
                 pass
             case True:
-                an = Comp.dlist(an)
-                if an is None or Comp.eqval(len(an), 2) is None:
+                match an.__class__.__name__:
+                    case 'tuple':
+                        an = Comp.dtup(an)
+                        if an is None:
+                            raise Exception
+                    case 'list':
+                        an = Comp.dlist(an)
+                        if an is None:
+                            raise Exception
+                    case _:
+                        raise Exception("Invalid argument: a => tuple/list")
+                if Comp.eqval(len(an), 2) is None:
                     raise Exception
             case _:
                 raise Exception("Invalid argument: chk => bool")
         return matx(tuple([tuple([Decimal(str(math.log(j*an[0], an[1]))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
 
     @classmethod
-    def expomel(cls, an: list[Decimal | float | int], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
+    def expomel(cls, an: list[Decimal] | tuple[Decimal, Decimal], a: matx, li: list, r=False, chk=True, ret=False) -> matx:
         match chk:
             case False:
                 pass
             case True:
-                an = Comp.dlist(an)
-                if an is None or Comp.eqval(len(an), 2) is None:
+                match an.__class__.__name__:
+                    case 'tuple':
+                        an = Comp.dtup(an)
+                        if an is None:
+                            raise Exception
+                    case 'list':
+                        an = Comp.dlist(an)
+                        if an is None:
+                            raise Exception
+                    case _:
+                        raise Exception("Invalid argument: a => tuple/list")
+                if Comp.eqval(len(an), 2) is None:
                     raise Exception
             case _:
                 raise Exception("Invalid argument: chk => bool")
         return matx(tuple([tuple([pwr(an[0], j*an[1]) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
 
     @classmethod
-    def trigmel(cls, n: Decimal | float | int, a: matx, li: list, r=False, f='cos', chk=True, ret=False) -> matx:
+    def trigmel(cls, n: Decimal, a: matx, li: list, r=False, f='cos', chk=True, ret=False) -> matx:
         match chk:
             case False:
                 pass
@@ -880,6 +924,12 @@ class matutils:
                 return matx(tuple([tuple([Decimal(str(math.asin(1 / n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
             case 'acot':
                 return matx(tuple([tuple([Decimal(str(math.atan(1 / n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
+            case 'sinh':
+                return matx(tuple([tuple([Decimal(str(math.sinh(n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
+            case 'cosh':
+                return matx(tuple([tuple([Decimal(str(math.cosh(n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
+            case 'tanh':
+                return matx(tuple([tuple([Decimal(str(math.tanh(n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
 
 # print("1")
 # z = [1, 2, 3]
@@ -901,7 +951,7 @@ class matutils:
 # matutils.tpose(a).pmatx
 # print(a.mele(0, 0))
 # a.pmatx
-# print(a.rowlen, a.collen)
+# rint(a.rowlen, a.collen)
 # a1 = [0, 0, 0]
 # a.pmatx
 # c = a.matxl()
@@ -926,5 +976,5 @@ class matutils:
 # matutils.mmult(a, b).pmatx
 # a = matx([11, 10, 100])
 # matutils.matlxtox(a)
-# matutils.maddone(a).pmatx
+# matutils.maddval(a, Decimal('2.0')).pmatx
 # matutils.matxtolx([matx([1,2,3]), matx([2,3,4])]).pmatx

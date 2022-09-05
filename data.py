@@ -118,15 +118,18 @@ class data:
 
 class datautils:
     @staticmethod
-    def data1(d: data, chk=True, ret=False) -> data:
+    def dataval(d: data, x: Decimal, chk=True, ret=False) -> data:
         try:
             match chk:
                 case False:
-                    return data(matutils.maddone(d.getax(), False, True), d.getay(), False, True)
+                    return data(matutils.maddval(d.getax(), x, False, True), d.getay(), False, True)
                 case True:
                     if Comp.tdata(d) is None:
                         raise Exception
-                    return data(matutils.maddone(d.getax(), False, True), d.getay(), False, True)
+                    x = Comp.tdeciml(x)
+                    if x is None:
+                        raise Exception
+                    return data(matutils.maddval(d.getax(), x, False, True), d.getay(), False, True)
                 case _:
                     raise Exception("Invalid argument: chk => bool")
         except Exception as e:
@@ -164,22 +167,6 @@ class datautils:
         except Exception as e:
             Terminate.retrn(ret, e)
 
-    # add powers of x at listed positions to data
-    @classmethod
-    def powlx(cls, d: data, an: list[Decimal | float | int], li: list, chk=True, ret=False) -> data:
-        try:
-            match chk:
-                case False:
-                    return data(matutils.addmatx(d.getax(), matutils.tpose(matutils.powmel(an, d.getax(), li, False, False, True)), False, False, True), d.getay(), False, True)
-                case True:
-                    if Comp.tdata(d) is None:
-                        raise Exception
-                    return data(matutils.addmatx(d.getax(), matutils.tpose(matutils.powmel(an, d.getax(), li, False, True, True)), False, False, True), d.getay(), False, True)
-                case _:
-                    raise Exception("Invalid argument: chk => bool")
-        except Exception as e:
-            Terminate.retrn(ret, e)
-
     # add multiplication of x at listed positions to data
     @classmethod
     def multlx(cls, d: data, li: list[list], chk=True, ret=False) -> data:
@@ -212,9 +199,25 @@ class datautils:
         except Exception as e:
             Terminate.retrn(ret, e)
 
+    # add powers of x at listed positions to data
+    @classmethod
+    def powlx(cls, d: data, an: list[Decimal], li: list, chk=True, ret=False) -> data:
+        try:
+            match chk:
+                case False:
+                    return data(matutils.addmatx(d.getax(), matutils.tpose(matutils.powmel(an, d.getax(), li, False, False, True)), False, False, True), d.getay(), False, True)
+                case True:
+                    if Comp.tdata(d) is None:
+                        raise Exception
+                    return data(matutils.addmatx(d.getax(), matutils.tpose(matutils.powmel(an, d.getax(), li, False, True, True)), False, False, True), d.getay(), False, True)
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+        except Exception as e:
+            Terminate.retrn(ret, e)
+
     # append log of x at listed positions to data
     @classmethod
-    def loglx(cls, d: data, an: list[Decimal | float | int], li: list, chk=True, ret=False) -> data:
+    def loglx(cls, d: data, an: list[Decimal], li: list, chk=True, ret=False) -> data:
         try:
             match chk:
                 case False:
@@ -230,7 +233,7 @@ class datautils:
 
     # append x at listed positions as a power to data
     @classmethod
-    def expolx(cls, d: data, an: list[Decimal | float | int], li: list, chk=True, ret=False) -> data:
+    def expolx(cls, d: data, an: list[Decimal], li: list, chk=True, ret=False) -> data:
         try:
             match chk:
                 case False:
@@ -245,7 +248,7 @@ class datautils:
             Terminate.retrn(ret, e)
     
     @classmethod
-    def triglx(cls, d: data, n: Decimal | float | int, li: list, f='cos', chk=True, ret=False) -> data:
+    def triglx(cls, d: data, n: Decimal, li: list, f='cos', chk=True, ret=False) -> data:
         try:
             match chk:
                 case False:

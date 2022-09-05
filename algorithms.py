@@ -84,7 +84,7 @@ class _Predict(matutils):
         try:
             match const:
                 case True:
-                    x = matutils.maddone(x, False, True)
+                    x = matutils.maddval(x, Decimal('1.0'), False, True)
                 case False:
                     pass
                 case _:
@@ -108,7 +108,7 @@ class _Predict(matutils):
         try:
             match const:
                 case True:
-                    x = matutils.maddone(x, False, True)
+                    x = matutils.maddval(x, Decimal('1.0'), False, True)
                 case False:
                     pass
                 case _:
@@ -205,56 +205,48 @@ class _Calculate(_Predict, matutils):
 
     # scale parameter values for linear regression
     @staticmethod
-    def _scalepar(c: matx, f: matx, p: matx, scale='0to1', ret=False) -> matx:
+    def _scalepar(c: matx, f: matx, p: matx, scale='0to1', const=True, ret=False) -> matx:
         try:
-            c = matx(c, True, True)
-            match scale:
-                case '0to1':
-                    pn = list()
-                    p = matx(tuple([(1 / f.mele(0, -1, False, True)) * i for i in p.matx[0]]), False, True)
-                    c = matx(tuple([c.mele(0, i, False, True) / f.mele(0, i, False, True) for i in range(c.rowlen)]),
-                             False, True)
-                    d = c.pop(c.rowlen - 1, False, False, True)[0]
-                    for i in range(p.rowlen):
-                        if i == 0:
-                            pn.append(p.mele(0, i, False, True) + sum(c.matx[0]) - d)
-                        else:
-                            pn.append(p.mele(0, i, False, True) * f.mele(0, i - 1, False, True))
-                    return matx(tuple(pn), False, True)
-                case 'orignl':
-                    pn = list()
-                    c = matx(tuple([c.mele(0, i, False, True) / f.mele(0, i, False, True) for i in range(c.rowlen)]),
-                             False, True)
-                    d = c.pop(c.rowlen - 1, False, False, True)[0]
-                    for i in range(p.rowlen):
-                        if i == 0:
-                            pn.append(p.mele(0, i, False, True) - sum(c.matx[0]) + d)
-                        else:
-                            pn.append(p.mele(0, i, False, True) * (1 / f.mele(0, i - 1, False, True)))
-                    return matx(tuple([f.mele(0, -1, False, True) * i for i in pn]), False, True)
-                case _:
-                    raise Exception("Invalid argument: scale => '0to1'/'orignl'")
+            c = matx(c, False, True)
+            f = matx(f, False, True)
+            match const:
+                case True:
+                    match scale:
+                        case '0to1':
+                            g = f.pop(-1, False, False, True)[0]
+                            d = c.pop(-1, False, False, True)[0] / g
+                            p = matutils.smult(1 / g, p, False, True)
+                            p0 = (p.pop(0, False, False, True)[0] + sum(matutils.smultfac(p.matx[0], c, False, False, True).matx[0]) - d, )
+                            p = p0 + matutils.smultfac(f.matx[0], p, False, False, True).matx[0]
+                            return matx(p, False, True)
+                        case 'orignl':
+                            p = matutils.smult(f.pop(-1, False, False, True)[0], p, False, True)
+                            p0 = p.pop(0, False, False, True)[0] + c.pop(-1, False, False, True)[0]
+                            p = matutils.smultfac(tuple([1 / i for i in f.matx[0]]), p, False, False, True)
+                            p0 -= matutils.mmult(p, matutils.tpose(c, False, True), False, True).matx[0][0]
+                            return matx((p0, ) + p.matx[0], False, True)
+                        case _:
+                            raise Exception("Invalid argument: scale => '0to1'/'orignl'")
+                case False:
+                    match scale:
+                        case '0to1':
+                            p = matutils.smult(1 / f.pop(-1, False, False, True)[0], p, False, True)
+                            p = matutils.smultfac(f.matx[0], p, False, False, True).matx[0]
+                            return matx(p, False, True)
+                        case 'orignl':
+                            p = matutils.smult(f.pop(-1, False, False, True)[0], p, False, True)
+                            p = matutils.smultfac(tuple([1 / i for i in f.matx[0]]), p, False, False, True)
+                            return matx(p, False, True)
+                        case _:
+                            raise Exception("Invalid argument: scale => '0to1'/'orignl'")
         except Exception as e:
             Terminate.retrn(ret, e)
 
     # returns weights for weighted regression
     @staticmethod
-    def _weights(d: tuple, xmt: tuple[matx, Decimal], ret=False) -> tuple:
+    def _weights(xd: matx, xmt: tuple[matx, Decimal], ret=False) -> matx:
         try:
-            t = Comp.tdeciml(xmt[1])
-            xm = xmt[0]
-            if Comp.tmatx(xm) is None:
-                raise Exception
-            if t is None:
-                raise Exception
-            if d[0].rowlen != xm.rowlen:
-                raise Exception(str(d[0].rowlen) + " != " + str(xm.rowlen))
-            w = list()
-            for i in d:
-                w1 = matutils.msub(i, xm, False, True)
-                w1 = matutils.mmult(w1, matutils.tpose(w1, False, True), False, True).matx[0][0]
-                w.append(pwr(Decimal(str(math.e)), - w1 / pwr(t, 2)))
-            return tuple(w)
+            return matutils.expomel([Decimal(str(math.e)), - 1 / pwr(xmt[1], 2)], matutils.matxtolx([matutils.mmult(j, matutils.tpose(j, False, True), False, True) for j in [matutils.msub(i, xmt[0], False, True) for i in matutils.matlxtox(xd, False, True)]]), [0, ], False, False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -336,54 +328,68 @@ class _Calculate(_Predict, matutils):
         except Exception as e:
             Terminate.retrn(ret, e)
 
+    @staticmethod
+    def _gradeserr(p: matx, pn: matx, pr: Decimal) -> bool:
+        err = math.sqrt(sum([pwr((i[1] - p.mele(0, i[0], False, True)) / i[1], 2) for i in enumerate(pn.matx[0])]) / p.rowlen)
+        if err < pr:
+                return True
+        else:
+            for i in range(pn.rowlen):
+                if pn.mele(0, i, False, True) == Decimal("nan") or pn.mele(0, i, False, True) == Decimal("inf") or pn.mele(0, i, False, True) == Decimal("-inf"):
+                    print("parameter" + str(i) + " is " + str(float(pn.mele(0, i, False, True))))
+                    return None
+            return False
+    
     # performs regression using gradient descent
     @classmethod
     def _grades(cls, d: data, p: matx, a: Decimal, cfp: list | tuple, m: int, pr: Decimal, scale=False, weigh=False, xmt=None, reg='linreg', const=True, ret=False) -> dict:
         try:
             li = list()
-            for i in cfp:
-                li.append(len(i))
             p1 = parameter(cfp, ret=True)
             if p.collen != 1 or p.rowlen != len(p1.n):
                 raise Exception("Check: p/cpf")
-            match weigh:
+            match const:
                 case False:
-                    pass
+                    da = d.data
                 case True:
-                    w = cls._weights(matutils.matlxtox(d.data[0]), xmt, False)
-                case _:
-                    raise Exception("Invalid argument: weigh => bool")
+                    da = datautils.dataval(d, Decimal('1.0'), False, True).data
             match scale:
                 case True:
                     sc = cls._scale0to1(d, True)
                     if sc is None:
                         raise Exception
-                    match const:
-                        case True:
-                            d = datautils.data1(sc["data"], True)
-                        case False:
-                            d = sc["data"]
-                        case _:
-                            raise Exception("Invalid argument: const => bool")
+                    d = sc["data"]
                     scc = sc["constant"]
                     scf = sc["factor"]
+                    if weigh is True:
+                        w = cls._weights(matutils.smultfac(scf.matx[0][:-1], d.data[0], False, False, True), (matutils.msub(xmt[0], matx(scc.matx[0][:-1], False, True), False, True), xmt[1]), True).matx[0]
                     del sc
-                    p = cls._scalepar(scc, scf, p, ret=True)
+                    match const:
+                        case True:
+                            d = datautils.dataval(d, Decimal('1.0'), False, True)
+                        case False:
+                            s = matutils.smultfac([1 / i for i in scf.matx[0]], scc, False, False, True)
+                            d1 = matutils.dpose(matutils.addmel(matutils.addmatx(matutils.addmatx(d.getax(), d.getay(), False, False, True), matutils.matxtolx([s for _ in range(d.datalen)], False, True)), [[i, i + d.xvars + 1] for i in range(d.xvars + 1)]), [d.xvars, 1], True, False, True)
+                            d = data(matutils.tpose(d1[0]), matutils.tpose(d1[1]), False, True)
+                            del d1
+                        case _:
+                            raise Exception("Invalid argument: const => bool")
+                    p = cls._scalepar(scc, scf, p, const=const, ret=True)
                     if p is None:
                         raise Exception
                 case False:
+                    if weigh is True:
+                        w = cls._weights(d.data[0], xmt, True).matx[0]
                     match const:
                         case True:
-                            d = datautils.data1(d, True)
+                            d = datautils.dataval(d, Decimal('1.0'), False, True)
                         case False:
                             pass
                         case _:
                             raise Exception("Invalid argument: const => bool")
-                case _:
-                    raise Exception("Invalid argument: scale => bool")
-            d1 = (function(tuple([matutils.dpose(i, li, chk=False, ret=True) for i in matutils.matlxtox(d.data[0])]), True), d.getay())
-            c = 0
-            while (c := c + 1) <= m:
+            d1 = (function(tuple([matutils.dpose(i, list(p1.n), chk=False, ret=True) for i in matutils.matlxtox(d.data[0])]), True), d.getay())
+            c = -1
+            while (c := c + 1) < m:
                 match reg:
                     case 'linreg':
                         match weigh:
@@ -403,18 +409,25 @@ class _Calculate(_Predict, matutils):
                         raise Exception("Invalid argument: reg => 'linreg'/'logreg'")
                 if pn is None:
                     raise Exception
-                err = math.sqrt(sum([pwr((i[1] - p.mele(0, i[0], False, True)) / i[1], 2) for i in
-                                     enumerate(pn.matx[0])]) / p.rowlen)
-                if err < pr:
+                match scale:
+                    case True:
+                        op = cls._scalepar(scc, scf, p, 'orignl', const, True)
+                        if p is None:
+                            raise Exception
+                        err = cls._gradeserr(op, pn, pr)
+                    case False:
+                        err = cls._gradeserr(p, pn, pr)
+                    case _:
+                        raise Exception("Invalid argument: scale => bool")
+                if err is True:
                     break
-                p.matx = pn
-                for i in range(pn.rowlen):
-                    if pn.mele(0, i, False, True) == Decimal("nan") or pn.mele(0, i, False, True) == Decimal(
-                            "inf") or pn.mele(0, i, False, True) == Decimal("-inf"):
-                        raise Exception("parameter", i, "is ", pn.mele(0, i, False, True))
+                elif err is False:
+                    p.matx = pn
+                else:
+                    raise Exception
             match scale:
                 case True:
-                    p = cls._scalepar(scc, scf, p, 'orignl', True)
+                    p = cls._scalepar(scc, scf, p, 'orignl', const, True)
                     if p is None:
                         raise Exception
                 case False:
@@ -426,7 +439,7 @@ class _Calculate(_Predict, matutils):
                     dic = dict()
                     dic["parameters"] = [str(i) for i in p.matxl()[0]]
                     dic["iterations"] = c
-                    dic["r^2"] = str(cls._coofdet((matutils.matlxtox(d.data[0]), matutils.matlxtox(d.data[1])), p, True))
+                    dic["r^2"] = str(cls._coofdet((matutils.matlxtox(da[0]), matutils.matlxtox(da[1])), p, True))
                     if dic["r^2"] is None:
                         raise Exception
                     try:
@@ -436,7 +449,7 @@ class _Calculate(_Predict, matutils):
                     return dic
                 case 'logreg':
                     dic1 = {"parameters": p.matxl()[0], "iterations": c, }
-                    miscl = str(cls._misclassed((matutils.matlxtox(d.data[0]), matutils.matlxtox(d.data[1])), dic1, ret=True))
+                    miscl = str(cls._misclassed((matutils.matlxtox(da[0]), matutils.matlxtox(da[1])), dic1, ret=True))
                     if miscl is None:
                         raise Exception
                     dic1.update({"misclassifications": miscl})
@@ -613,8 +626,8 @@ class _Calculate(_Predict, matutils):
                             elif j < i:
                                 lts += lt.mele(i, j, False, True)
                     if math.fabs(lts) > math.fabs(uts):
-                        c = 0
-                        while (c := c + 1) <= m:
+                        c = -1
+                        while (c := c + 1) < m:
                             pn = cls._lup(lt, ut, p, b)
                             if pn is None:
                                 raise Exception
@@ -628,8 +641,8 @@ class _Calculate(_Predict, matutils):
                                         "inf") or pn.mele(0, i, False, True) == float("-inf"):
                                     raise Exception("parameter", i, "is ", pn.mele(0, i, False, True))
                     else:
-                        c = 0
-                        while (c := c + 1) <= m:
+                        c = -1
+                        while (c := c + 1) < m:
                             pn = cls._ulp(ut, lt, p, b)
                             if pn is None:
                                 raise Exception
@@ -703,7 +716,7 @@ class _Calculate(_Predict, matutils):
                 case False:
                     match const:
                         case True:
-                            d1 = datautils.data1(d, True)
+                            d1 = datautils.dataval(d, Decimal('1.0'), False, True)
                         case False:
                             d1 = d
                         case _:
@@ -714,10 +727,16 @@ class _Calculate(_Predict, matutils):
                     x.matx = cls._hessianx(x, ret=True)
                 # performs weighted linear regression using matrix method
                 case True:
-                    w = cls._weights(matutils.matlxtox(d.data[0]), xmt, False)
+                    w = cls._weights(d.data[0], xmt, True).matx[0]
                     if w is None:
                         raise Exception
-                    d1 = datautils.data1(d)
+                    match const:
+                        case True:
+                            d1 = datautils.dataval(d, Decimal('1.0'), False, True)
+                        case False:
+                            d1 = d
+                        case _:
+                            raise Exception("Invalid argument: const=bool")
                     y = d1.getay()
                     x = d1.getax()
                     xt = matutils.smultfac(w, x, True, False, True)
@@ -819,7 +838,7 @@ class _Calculate(_Predict, matutils):
 class LinReg(_Calculate):
 
     @staticmethod
-    def grades(d: data, p: list | matx, a: float, m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def grades(d: data, p: list | matx, a: float, m=100, pr=0.01, scale=False, const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -835,9 +854,16 @@ class LinReg(_Calculate):
             m = Comp.tintn(m)
             if m is None:
                 raise Exception
-            if p.rowlen != d.xvars + 1:
-                raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
-            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale=scale, ret=True)
+            match const:
+                case True:
+                    if p.rowlen != d.xvars + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                case False:
+                    if p.rowlen != d.xvars:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
+            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale, const=const, ret=True)
             if r is None:
                 raise Exception
             return r
@@ -845,7 +871,7 @@ class LinReg(_Calculate):
             Terminate.retrn(ret, e)
 
     @staticmethod
-    def matrix(d: data, p=None, m=100, pr=0.01, method='inverse', ret=False) -> dict:
+    def matrix(d: data, p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -854,11 +880,18 @@ class LinReg(_Calculate):
                 raise Exception
             if p is not None:
                 p = matx(p, ret=True)
-                if p is None:
+                if p is None or Comp.eqval(p.collen, 1) is None:
                     raise Exception
-                if p.collen != 1 or p.rowlen != d.xvars + 1:
-                    raise Exception(str(p.collen) + " != " + str(d.xvars + 1))
-            r = _Calculate._regmatrix(d, (p, m, pr), method=method, ret=True)
+                match const:
+                    case True:
+                        if p.rowlen != d.xvars + 1:
+                            raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                    case False:
+                        if p.rowlen != d.xvars:
+                            raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                    case _:
+                        raise Exception("Invalid argument: const => bool")
+            r = _Calculate._regmatrix(d, (p, m, pr), method=method, const=const, ret=True)
             if r is None:
                 raise Exception
             return r
@@ -869,7 +902,7 @@ class LinReg(_Calculate):
 class WeiLinReg(_Calculate):
 
     @staticmethod
-    def grades(d: data, p: list | matx, a: float, x: list, t=float("inf"), m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def grades(d: data, p: list | matx, a: float, x: list, t=float("inf"), m=100, pr=0.01, scale=False, const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -885,15 +918,22 @@ class WeiLinReg(_Calculate):
             m = Comp.tintn(m)
             if m is None:
                 raise Exception
-            if p.rowlen != d.xvars + 1:
-                raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+            match const:
+                case True:
+                    if p.rowlen != d.xvars + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                case False:
+                    if p.rowlen != d.xvars:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
             x = matx(x, ret=True)
             if x.rowlen != d.xvars:
                 raise Exception(str(x.rowlen) + " != " + str(d.xvars))
             t = Comp.tdeciml(t)
             if t is None:
                 raise Exception
-            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale, True, (x, t), ret=True)
+            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale, True, (x, t), const=const, ret=True)
             if r is None:
                 raise Exception
             return r
@@ -901,7 +941,7 @@ class WeiLinReg(_Calculate):
             Terminate.retrn(ret, e)
 
     @staticmethod
-    def matrix(d: data, x: list, t=float('inf'), p=None, m=100, pr=0.01, method='inverse', ret=False) -> dict:
+    def matrix(d: data, x: list, t=float('inf'), p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -916,11 +956,18 @@ class WeiLinReg(_Calculate):
                 raise Exception
             if p is not None:
                 p = matx(p, ret=True)
-                if p is None:
+                if p is None or Comp.eqval(p.collen, 1) is None:
                     raise Exception
-                if p.collen != 1 or p.rowlen != d.xvars + 1:
-                    raise Exception(str(p.collen) + " != " + str(d.xvars + 1))
-            r = _Calculate._regmatrix(d, (p, m, pr), True, (x, t), method=method, ret=True)
+                match const:
+                    case True:
+                        if p.rowlen != d.xvars + 1:
+                            raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                    case False:
+                        if p.rowlen != d.xvars:
+                            raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                    case _:
+                        raise Exception("Invalid argument: const => bool")
+            r = _Calculate._regmatrix(d, (p, m, pr), True, (x, t), method=method, const=const, ret=True)
             if r is None:
                 raise Exception
             return r
@@ -931,7 +978,7 @@ class WeiLinReg(_Calculate):
 class LogReg(_Calculate):
 
     @staticmethod
-    def grades(d: data, p: list | matx, a: float, m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def grades(d: data, p: list | matx, a: float, m=100, pr=0.01, scale=False, const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -947,9 +994,16 @@ class LogReg(_Calculate):
             m = Comp.tintn(m)
             if m is None:
                 raise Exception
-            if p.rowlen != d.xvars + 1:
-                raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
-            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale, reg='logreg', ret=True)
+            match const:
+                case True:
+                    if p.rowlen != d.xvars + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                case False:
+                    if p.rowlen != d.xvars:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
+            r = _Calculate._grades(d, p, a, [((1, 1),) for _ in range(p.rowlen)], m, pr, scale, reg='logreg', const=const, ret=True)
             if r is None:
                 raise Exception
             return r
@@ -957,7 +1011,7 @@ class LogReg(_Calculate):
             Terminate.retrn(ret, e)
 
     @classmethod
-    def gradesgc(cls, d: dict, p: dict, a: float, m=100, pr=0.01, scale=False, ret=False) -> dict:
+    def gradesgc(cls, d: dict, p: dict, a: float, m=100, pr=0.01, scale=False, const=True, ret=False) -> dict:
         try:
             if Comp.matchkeys(d, p) is None:
                 raise Exception
@@ -972,11 +1026,11 @@ class LogReg(_Calculate):
             match scale:
                 case False:
                     for i in d.items():
-                        dic[i[0]] = cls.grades(i[1], par[i[0]], a, m, pr, False, True)
+                        dic[i[0]] = cls.grades(i[1], par[i[0]], a, m, pr, False, const, True)
                     return dic
                 case True:
                     for i in d.items():
-                        dic[i[0]] = cls.grades(i[1], par[i[0]], a, m, pr, True, True)
+                        dic[i[0]] = cls.grades(i[1], par[i[0]], a, m, pr, True, const, True)
                     return dic
                 case _:
                     raise Exception
@@ -1016,8 +1070,15 @@ class Predict(_Predict):
             p = matx(p, ret=True)
             if p is None:
                 raise Exception
-            if p.rowlen != d.xvars + 1:
-                raise Exception(str(p.rowlen) + " != " + str(d.xvars + 1))
+            match const:
+                case True:
+                    if p.rowlen != d.xvars + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars + 1))
+                case False:
+                    if p.rowlen != d.xvars:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(d.xvars))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
             return matx(tuple([tuple(i) for i in cls._ypy((matutils.matlxtox(d.data[0]), matutils.matlxtox(d.data[1])), p, const, True)]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -1029,8 +1090,15 @@ class Predict(_Predict):
             if p is None:
                 raise Exception
             x = matx(x, ret=True)
-            if x.rowlen + 1 != p.rowlen:
-                raise Exception(str(p.rowlen) + " != " + str(x.rowlen + 1))
+            match const:
+                case True:
+                    if p.rowlen != x.rowlen + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(x.rowlen + 1))
+                case False:
+                    if p.rowlen != x.rowlen:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(x.rowlen))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
             return cls._plinreg(p, x, const, True)
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -1044,8 +1112,15 @@ class Predict(_Predict):
             x = matx(x, ret=True)
             if x is None:
                 raise Exception
-            if x.rowlen + 1 != p.rowlen:
-                raise Exception(str(p.rowlen) + " != " + str(x.rowlen + 1))
+            match const:
+                case True:
+                    if p.rowlen != x.rowlen + 1:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(x.rowlen + 1))
+                case False:
+                    if p.rowlen != x.rowlen:
+                        raise Exception("number of parameters: " + str(p.rowlen) + " != " + str(x.rowlen))
+                case _:
+                    raise Exception("Invalid argument: const => bool")
             y = cls._plogreg(p, x, const, True)
             if y is True:
                 return 1
@@ -1167,8 +1242,8 @@ class SolveFn(funcutils, matutils):
             value = dict()
             for i in xn:
                 xi = i
-                c = 0
-                while (c := c + 1) <= m:
+                c = -1
+                while (c := c + 1) < m:
                     val = xre.val(xi)
                     valy = p.val(val)
                     if str(valy) == 'NaN':
@@ -1203,11 +1278,11 @@ class SolveFn(funcutils, matutils):
                         raise Exception
             value = dict()
             for i in x:
-                c = 0
                 p1 = (i.mele(0, 0, False, True), p.val(i.mele(0, 0, False, True)))
                 p2 = (i.mele(0, 1, False, True), p.val(i.mele(0, 1, False, True)))
                 if p1[1]*p2[1] < 0:
-                    while (c := c + 1) <= m:
+                    c = -1
+                    while (c := c + 1) < m:
                         valx = (((p1[0] - p2[0]) * (- p1[1])) / (p1[1] - p2[1])) + p1[0]
                         p3 = (valx, p.val(valx))
                         if str(p3[1]) == 'NaN':
@@ -1244,11 +1319,11 @@ class SolveFn(funcutils, matutils):
                         raise Exception
             value = dict()
             for i in x:
-                c = 0
                 p1 = (i.mele(0, 0, False, True), p.val(i.mele(0, 0, False, True)))
                 p2 = (i.mele(0, 1, False, True), p.val(i.mele(0, 1, False, True)))
                 if p1[1]*p2[1] < 0:
-                    while (c := c + 1) <= m:
+                    c = -1
+                    while (c := c + 1) < m:
                         mid = (p1[0] + p2[0]) / 2
                         p3 = (mid, p.val(mid))
                         if str(p3[1]) == 'NaN':
@@ -1284,8 +1359,8 @@ class SolveFn(funcutils, matutils):
                         raise Exception
             value = dict()
             for i in x.matx[0]:
-                c = 0
-                while (c := c + 1) <= m:
+                c = -1
+                while (c := c + 1) < m:
                     nx = i - (p.val(i) / p.dval(i))
                     if p.val(nx) < pr:
                         value[str(i)] = (str(nx), c, )
@@ -1302,12 +1377,12 @@ class SolveFn(funcutils, matutils):
 # b = LinReg.matrix(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [1,1,1,1], pr=0.01, method='gauseidel')
 # print(b)
 # b = LinReg.grades(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]),
-#                    [0, 1, 1, 1], 0.01, 100, scale=True, ret=True)
+#                    [1, 1, 1], 0.01, 100, scale=True, const=False, ret=True)
 # print(b)
 # a = 0.00196
-# b = LinReg.grades(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [0, 1, 1, 1], a, 1000, 0.01, ret=True)
+# b = LinReg.grades(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [1, 1, 1], a, 1000, 0.01, const=False, ret=True)
 # print(b)
-# print(Predict.linreg(b["parameters"], [2,3,6]))
+# print(Predict.linreg(b["parameters"], [2,3,6], False))
 # print('2')
 # c = WeiLinReg.matrix(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]), [2, 6, 4])
 # print(c)
@@ -1330,7 +1405,7 @@ class SolveFn(funcutils, matutils):
 #                           'r^2': 0.9983192621607382, 'r^2_adj': 0.9978390513495206},
 #         'Al_HighCutoff': {'parameters': [15.811508555198088, -8.971596025396138, 1.1032308384019416],
 #                            'r^2': 0.998828056926424, 'r^2_adj': 0.9984932160482594},
-#          'Al_MedCutoff': {'parameters': [15.946995875099674, -9.0157831403194, 1.107305156358052],
+#         'Al_MedCutoff': {'parameters': [15.946995875099674, -9.0157831403194, 1.107305156358052],
 #                           'r^2': 0.9988916677797752, 'r^2_adj': 0.9985750014311395}}
 #     p = dict()
 #     for i in d.items():
