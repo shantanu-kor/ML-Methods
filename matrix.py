@@ -3,14 +3,27 @@ from decimal import Decimal
 from cmdexec import Terminate, Comp
 
 
-def pwr(a: Decimal | int | float, b: Decimal | int | float) -> Decimal:
-    if a == 0 and b == 0:
-        return Decimal('1')
-    else:
-        try:
-            return Decimal(str(a ** b))
-        except:
-            return Decimal('NaN')
+def pwr(a: Decimal, b: Decimal, chk=True, ret=False) -> Decimal:
+    try:
+        match chk:
+            case False:
+                pass
+            case True:
+                a = Comp.tdeciml(a)
+                b = Comp.tdeciml(b)
+                if a is None or b is None:
+                    raise Exception
+            case _:
+                raise Exception("Invalid argument: chk => bool")
+        if a == 0 and b == 0:
+            return Decimal('1')
+        else:
+            try:
+                return a ** b
+            except:
+                return Decimal('NaN')
+    except Exception as e:
+        Terminate.retrn(ret, e)        
 
 
 class Matx:
@@ -384,7 +397,7 @@ class matutils:
                 case _:
                     raise Exception("Invalid argument: chk => bool")
             a = matx(a, True, True)
-            p = pwr(-1, b + c)
+            p = pwr(Decimal('-1'), Decimal(str(b + c)), False, True)
             a.pop(c, False, False, True)
             a.pop(b, chk=False, ret=True)
             dn = cls.dnant(a, False, True)
@@ -500,9 +513,9 @@ class matutils:
             if det == 0:
                 raise Exception("Error: Determinant is 0,\nInverse DNE!")
             elif det > 0:
-                a.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), a, False, True)
+                a.matx = cls.smult(pwr(det, Decimal(-1 / a.collen), False, True), a, False, True)
             else:
-                a.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), a, False, True)
+                a.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen), False, True), a, False, True)
             b = cls.sclrm(a.rowlen, Decimal('1.0'), False, True)
             for i in range(a.collen):
                 ele = a.mele(i, i, False, True)
@@ -518,8 +531,8 @@ class matutils:
                                 if j == a.rowlen - 1:
                                     if ele != 0:
                                         a.matx = cls.tform(a, i + 1, i, Decimal('1'), False, False, True)
-                                        b.matx = cls.tform(b, i + 1, i, Decimal('1'), False, False, True)
                                         a.matx = cls.tform(a, i, i + 1, (1 / ele) - 1, False, False, True)
+                                        b.matx = cls.tform(b, i + 1, i, Decimal('1'), False, False, True)
                                         b.matx = cls.tform(b, i, i + 1, (1 / ele) - 1, False, False, True)
                                     else:
                                         raise Exception("Error: Invalid Matrix Inverse")
@@ -538,9 +551,9 @@ class matutils:
                         del el
                 del ele
             if det > 0:
-                b.matx = cls.smult(pwr(det, Decimal(-1 / a.collen)), b, False, True)
+                b.matx = cls.smult(pwr(det, Decimal(-1 / a.collen), False, True), b, False, True)
             if det < 0:
-                b.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen)), b, False, True)
+                b.matx = cls.smult(-pwr(-det, Decimal(-1 / a.collen), False, True), b, False, True)
             return cls.dnant(b, False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
@@ -837,7 +850,7 @@ class matutils:
                         raise Exception
                 case _:
                     raise Exception("Invalid argument: chk => bool")
-            return matx(tuple([tuple([pwr(an[0]*j, an[1]) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
+            return matx(tuple([tuple([pwr(an[0]*j, an[1], False, True) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -886,7 +899,7 @@ class matutils:
                     raise Exception
             case _:
                 raise Exception("Invalid argument: chk => bool")
-        return matx(tuple([tuple([pwr(an[0], j*an[1]) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
+        return matx(tuple([tuple([pwr(an[0], j*an[1], False, True) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
 
     @classmethod
     def trigmel(cls, n: Decimal, a: matx, li: list, r=False, f='cos', chk=True, ret=False) -> matx:
@@ -931,6 +944,7 @@ class matutils:
             case 'tanh':
                 return matx(tuple([tuple([Decimal(str(math.tanh(n*j))) for j in i]) for i in cls.gele(a, li, r, chk, True).matx]), False, True)
 
+
 # print("1")
 # z = [1, 2, 3]
 # a1 = [z, [5, 2, int(6)], [5, 5, 8]]
@@ -951,7 +965,7 @@ class matutils:
 # matutils.tpose(a).pmatx
 # print(a.mele(0, 0))
 # a.pmatx
-# rint(a.rowlen, a.collen)
+# print(a.rowlen, a.collen)
 # a1 = [0, 0, 0]
 # a.pmatx
 # c = a.matxl()
@@ -976,5 +990,5 @@ class matutils:
 # matutils.mmult(a, b).pmatx
 # a = matx([11, 10, 100])
 # matutils.matlxtox(a)
-# matutils.maddval(a, Decimal('2.0')).pmatx
+# matutils.maddval(a, Decimal('1.0')).pmatx
 # matutils.matxtolx([matx([1,2,3]), matx([2,3,4])]).pmatx

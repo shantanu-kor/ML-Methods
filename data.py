@@ -1,6 +1,6 @@
-import math
+# import math
 from decimal import Decimal
-from matrix import matx, matutils, pwr
+from matrix import matx, matutils
 from cmdexec import Terminate, Comp
 
 
