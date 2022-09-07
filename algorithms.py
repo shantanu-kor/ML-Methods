@@ -437,9 +437,11 @@ class _Calculate(_Predict, matutils):
                 match scale:
                     case True:
                         op = cls._scalepar(scc, scf, p, 'orignl', const, True)
-                        if p is None:
+                        opn = cls._scalepar(scc, scf, pn, 'orignl', const, True)
+                        if op is None or opn is None:
                             raise Exception
-                        err = cls._cmperrpr(op, pn, pr)
+                        err = cls._cmperrpr(op, opn, pr)
+                        del op, opn
                     case False:
                         err = cls._cmperrpr(p, pn, pr)
                     case _:
