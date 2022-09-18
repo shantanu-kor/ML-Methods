@@ -8,37 +8,11 @@ from cmdexec import Terminate
 from utils import Comp
 from matrix import matx, matutils, pwr
 from data import data, datautils
-from algoutils import parameter, Scale, Calculate
+from algoutils import parameter, function, Scale, Calculate
 from linsys import Method
 
 
-class function(matutils, matx):
-    def __init__(self, li: tuple, chk=True, ret=False) -> None:
-        try:
-            match chk:
-                case True:
-                    if Comp.tmatx(li, True) is None:
-                        raise Exception
-                case False:
-                    pass
-                case _:
-                    raise Exception("Invalid argument: chk => bool")
-            self.__x = li
-            self.val = lambda p: self.__fval(p)
-            del li
-        except Exception as e:
-            Terminate.retrn(ret, e)
-    
-    def __fval(self, p: tuple[matx, ...]) -> matx:
-        for i in enumerate([matutils.mmult(i[1], matutils.tpose(p[i[0]]), False, True) for i in enumerate(self.__x)]):
-            if i[0] == 0:
-                x = i[1]
-            else:
-                x = matutils.addmatx(x, i[1], False, False, True)
-        return x
-
-
-class _Predict(parameter, matutils, matx):
+class _Predict(parameter, function, matutils, matx):
 
     @classmethod
     def _pygp(cls, x: matx, p: matx, p1: parameter, const=(False, True), ret=False) -> Decimal:
@@ -77,11 +51,11 @@ class _Predict(parameter, matutils, matx):
             match const[0]:
                 case False:
                     p = p1.val(p)
-                    return matutils.tpose(matutils.addmel(x.val(p), [[i for i in range(len(p1.n))], ], False, False, True), False, True)
+                    return matx(tuple([(sum(i), ) for i in x.val(p).matx]), False, True)
                 case True:
                     p = matx(p, False, True)
                     p0 = p.pop(0, False, False, True)
-                    return matutils.smult(p0, matutils.tpose(matutils.addmel(x.val(p), [[i for i in range(len(p1.n))], ], False, False, True), False, True), False, True)
+                    return matx(tuple([(p0 * sum(i), ) for i in x.val(p).matx]), False, True)
                 case _:
                     raise Exception("Invalid argument: const => (bool, bool)")
         except Exception as e:
@@ -301,7 +275,6 @@ class _ScalePar(matutils, matx):
         except Exception as e:
             Terminate.retrn(ret, e)
 
-
     @classmethod
     def _orignl(cls, c: matx, f: matx, p: matx, const=True, ret=False) -> matx:
         try:
@@ -324,7 +297,7 @@ class _ScalePar(matutils, matx):
             Terminate.retrn(ret, e)
 
 
-class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
+class _Calculate(_Predict, _ScalePar, Method, Scale, function, matutils, Calculate, matx):
 
     # returns weights for weighted regression
     @classmethod
@@ -346,6 +319,17 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
         except Exception as e:
             Terminate.retrn(ret, e)
     
+    @classmethod
+    def _coofdetgp(cls, d: tuple, p: matx, p1: parameter, const: tuple[bool, bool], ret=False) -> Decimal:
+        try:
+            y = _Predict._pallygp(d[0], p, p1, const, ret=True)
+            ym = matutils.addmel(d[1], [[i for i in range(d[1].collen)], ], True, False, True).matx[0][0] / d[1].collen
+            ssr = sum([pwr((i[0] - ym), 2, False, True) for i in y.matx])
+            sst = sum([pwr((i[0] - ym), 2, False, True) for i in d[1].matx])
+            return ssr / sst
+        except Exception as e:
+            Terminate.retrn(ret, e)
+
     @classmethod
     def _linreg(cls, d: tuple, p: matx, a, m, pr, const: tuple[bool, bool], ret=False) -> tuple[matx, int]:
         try:
@@ -702,12 +686,12 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
                 err = Calculate._cmperrpr(ap, apn, pr, True)
                 match err:
                     case True:
-                        return pn, apn, c
+                        return pn, c
                     case False:
                         p.matx = pn
                     case _:
                         raise Exception
-            return pn, apn, c - 1
+            return pn, c - 1
         except Exception as e:
             Terminate.retrn(ret, e)
     
@@ -759,12 +743,12 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
                 err = Calculate._cmperrpr(ap, apn, pr, True)
                 match err:
                     case True:
-                        return pn, apn, c
+                        return pn, c
                     case False:
                         p.matx = pn
                     case _:
                         raise Exception
-            return pn, apn, c - 1
+            return pn, c - 1
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -797,12 +781,11 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
             if pn is None:
                 raise Exception
             p = pn[0]
-            ap = pn[1]
-            c = pn[2]
+            c = pn[1]
             dic = dict()
-            dic["parameters"] = [[str(i) for i in p.matxl()[0]], [str(i) for i in ap.matxl()[0]]]
+            dic["parameters"] = [[str(i) for i in p.matxl()[0]], [[str(j) for j in i.matx[0]] for i in p1.val(p)]]
             dic["iterations"] = c
-            dic["r^2"] = str(cls._coofdet(da.data, ap, const, True))
+            dic["r^2"] = str(cls._coofdetgp(da.data, p, p1, const, True))
             if dic["r^2"] is None:
                 raise Exception
             try:
@@ -813,7 +796,6 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
         except Exception as e:
             Terminate.retrn(ret, e)
     
-
     @classmethod
     def _hessianx(cls, x: matx, xt=None, ret=False) -> matx:
         try:
@@ -850,9 +832,8 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
         except Exception as e:
             Terminate.retrn(ret, e)
 
-
-    @staticmethod
-    def _jacobiany(x: matx, y: matx, ret=False) -> matx:
+    @classmethod
+    def _jacobiany(cls, x: matx, y: matx, ret=False) -> matx:
         try:
             x = matutils.matlxtox(matutils.tpose(x, False, True), False, True)
             j = list()
@@ -943,8 +924,9 @@ class _Calculate(_Predict, _ScalePar, Method, Scale, matutils, Calculate, matx):
 
 
 class LinReg(_Calculate, parameter, Comp):
-    @staticmethod
-    def gradesgp(d: data, p: list | matx, cfp: list[list[list]] | tuple[tuple[tuple[float | Decimal | int, float | Decimal | int], ...], ...], a: float, m=100, pr=0.01, const=(False, True), ret=False) -> dict:
+    
+    @classmethod
+    def gradesgp(cls, d: data, p: list | matx, cfp: list[list[list]] | tuple[tuple[tuple[float | Decimal | int, float | Decimal | int], ...], ...], a: float, m=100, pr=0.01, const=(False, True), ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -1022,8 +1004,8 @@ class LinReg(_Calculate, parameter, Comp):
         except Exception as e:
             Terminate.retrn(ret, e)
 
-    @staticmethod
-    def matrix(d: data, p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
+    @classmethod
+    def matrix(cls, d: data, p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -1050,8 +1032,8 @@ class LinReg(_Calculate, parameter, Comp):
 
 class WeiLinReg(_Calculate, parameter, Comp):
 
-    @staticmethod
-    def gradesgp(d: data, p: list | matx, a: float, cfp: list[list[list]] | tuple[tuple[tuple[float | Decimal | int, float | Decimal | int], ...], ...], x: list, t=float("inf"), m=100, pr=0.01, const=(False, True), ret=False) -> dict:
+    @classmethod
+    def gradesgp(cls, d: data, p: list | matx, a: float, cfp: list[list[list]] | tuple[tuple[tuple[float | Decimal | int, float | Decimal | int], ...], ...], x: list, t=float("inf"), m=100, pr=0.01, const=(False, True), ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -1143,8 +1125,8 @@ class WeiLinReg(_Calculate, parameter, Comp):
         except Exception as e:
             Terminate.retrn(ret, e)
 
-    @staticmethod
-    def matrix(d: data, x: list, t=float('inf'), p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
+    @classmethod
+    def matrix(cls, d: data, x: list, t=float('inf'), p=None, m=100, pr=0.01, method='inverse', const=True, ret=False) -> dict:
         try:
             if Comp.tdata(d) is None:
                 raise Exception
@@ -1198,4 +1180,4 @@ class WeiLinReg(_Calculate, parameter, Comp):
 #    0.0008, [[[1, 1 ], ] for _ in range(3)], [2, 4, 6], const=(False, False))
 # print(c)
 # PLinReg.allygp(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]),  c["parameters"][0], [[[1,1], ] for i in range(3)], (False, False)).pmatx
-# PLinReg.ally(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]),  c["parameters"][1] , (False, False)).pmatx
+# PLinReg.ally(data([[1, 2, 3], [2, 4, 6], [3, 6, 9], [10, 12, 12], [15, 12, 10]], [[6], [12], [18], [25], [26]]),  c["parameters"][0] , (False, False)).pmatx
