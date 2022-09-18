@@ -7,21 +7,17 @@ def pwr(a: Decimal, b: Decimal, chk=True, ret=False) -> Decimal:
     try:
         match chk:
             case False:
-                pass
+                try: return a ** b
+                except: return Decimal('1.0')
             case True:
                 a = Comp.tdeciml(a)
                 b = Comp.tdeciml(b)
                 if a is None or b is None:
                     raise Exception
+                try: return a ** b
+                except: return Decimal('1.0')
             case _:
                 raise Exception("Invalid argument: chk => bool")
-        if a == 0 and b == 0:
-            return Decimal('1')
-        else:
-            try:
-                return a ** b
-            except:
-                return Decimal('NaN')
     except Exception as e:
         Terminate.retrn(ret, e)        
 
@@ -29,7 +25,7 @@ def pwr(a: Decimal, b: Decimal, chk=True, ret=False) -> Decimal:
 class Matx(Comp):
     
     @classmethod
-    def matrix(cls, li: list[list] | tuple[tuple] | list | tuple, chk=True) -> tuple[tuple[Decimal]]:
+    def matrix(cls, li: list[list] | tuple[tuple] | list | tuple, chk=True) -> tuple[tuple[Decimal, ...], ...]:
         try:
             tli = li.__class__.__name__
             match chk:
@@ -175,7 +171,7 @@ class matx(Matx):
             Terminate.retrn(ret, e)
 
     # return tuple of i'th row
-    def mrow(self, i: int, chk=True, ret=False) -> tuple[Decimal]:
+    def mrow(self, i: int, chk=True, ret=False) -> tuple[Decimal, ...]:
         try:
             match chk:
                 case False:
@@ -191,7 +187,7 @@ class matx(Matx):
             Terminate.retrn(ret, e)
 
     # returns tuple of i'th column
-    def mcol(self, j: int, chk=True, ret=False) -> tuple[Decimal]:
+    def mcol(self, j: int, chk=True, ret=False) -> tuple[Decimal, ...]:
         try:
             match chk:
                 case False:
@@ -320,13 +316,12 @@ class matutils(matx, Comp):
             Terminate.retrn(ret, e)
 
     @classmethod
-    def matxtolx(cls, a: tuple | list, chk=True, ret=False) -> matx:
+    def matxtolx(cls, a: tuple[matx, ...] | list, chk=True, ret=False) -> matx:
         try:
             x = list()
             match chk:
                 case False:
-                    for i in a:
-                        x.append(i.matx[0])
+                    return matx(tuple([i.matx[0] for i in a]), False, True)
                 case True:
                     if Comp.tmatx(a, True) is None:
                         raise Exception
@@ -335,9 +330,9 @@ class matutils(matx, Comp):
                         if Comp.eqval(i.collen, 1) is None or Comp.eqval(i.rowlen, ar) is None:
                             raise Exception
                         x.append(i.matx[0])
+                    return matx(tuple(x), False, True)
                 case _:
                     raise Exception("Invalid argument: chk => bool")
-            return matx(tuple(x), False, True)
         except Exception as e:
             Terminate.retrn(ret, e)
 
@@ -1046,4 +1041,4 @@ class matutils(matx, Comp):
 # a = matx([11, 10, 100])
 # matutils.matlxtox(a)
 # matutils.maddval(a, Decimal('1.0')).pmatx
-# matutils.matxtolx([matx([1,2,3]), matx([2,3,4])]).pmatx
+# matutils.matxtolx([matx([1,2,3]), matx([2,3,4])], False).pmatx
