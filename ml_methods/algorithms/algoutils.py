@@ -1,6 +1,6 @@
-# import os, sys
+import os, sys
 
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decimal import Decimal
 import math
@@ -85,10 +85,36 @@ class parameter(matx):
         return tuple(l)
 
 
+class function(matutils, matx):
+    def __init__(self, li: tuple, chk=True, ret=False) -> None:
+        try:
+            match chk:
+                case True:
+                    if Comp.tmatx(li, True) is None:
+                        raise Exception
+                case False:
+                    pass
+                case _:
+                    raise Exception("Invalid argument: chk => bool")
+            self.__x = li
+            self.val = lambda p: self.__fval(p)
+            del li
+        except Exception as e:
+            Terminate.retrn(ret, e)
+    
+    def __fval(self, p: tuple[matx, ...]) -> matx:
+        for i in enumerate([matutils.mmult(i[1], matutils.tpose(p[i[0]]), False, True) for i in enumerate(self.__x)]):
+            if i[0] == 0:
+                x = i[1]
+            else:
+                x = matutils.addmatx(x, i[1], False, False, True)
+        return x
+
+
 class Calculate(matx):
 
-    @staticmethod
-    def _cmperrpr(p: matx, pn: matx, pr: Decimal, ret=False) -> bool:
+    @classmethod
+    def _cmperrpr(cls, p: matx, pn: matx, pr: Decimal, ret=False) -> bool:
         try:
             for i in range(pn.rowlen):
                 if float(pn.mele(0, i, False, True)) == float("nan") or float(pn.mele(0, i, False, True)) == float(Decimal("inf")) or float(pn.mele(0, i, False, True)) == float("-inf"):
@@ -106,8 +132,8 @@ class Calculate(matx):
 
 class Scale(data, matutils, matx):
     # scale matx between [0, 1]
-    @staticmethod
-    def _scale0to1x(x: matx, ret=False) -> dict:
+    @classmethod
+    def _scale0to1x(cls, x: matx, ret=False) -> dict:
         try:
             x = matutils.tpose(x, False, True)
             mx = list()
