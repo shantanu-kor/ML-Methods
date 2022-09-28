@@ -223,7 +223,7 @@ V. ALGORITHMS
     >> returns predicted value
 
     - example
-      > Predict.logreg([100, 10], [-12.589653400309972, 0.233307861859726, 0.012958330133487328], (False, True))
+      > PLogReg.y([100, 10], [-12.589653400309972, 0.233307861859726, 0.012958330133487328], (False, True))
       >> 1
     
     > PLogReg.clas(x: list, d: dict, const: (bool, bool))
