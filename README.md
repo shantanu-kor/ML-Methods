@@ -64,7 +64,7 @@ II. To convert data into "data" object
 
 III. To create data object
 
-  > from ml_methods.data import data
+  > from ml_methods.dobj.data import data
   
   > d = data([[x0_0, x0_1, ...], [x1_0, x1_1, ...], x2, ...], [y0, y1, y2, ...])
 
