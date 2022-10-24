@@ -1,73 +1,93 @@
-# import os, sys
-
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from decimal import Decimal
-import math
-from cmdexec import Terminate
-from utils import Comp
-from matrix import matx, matutils, pwr
-from data import data
+from utils.deciml import deciml, constant as cnst, algbra as alg, stat, Decimal
+from utils.cmpr import eqval, tdict, tdata
+from utils.terminate import retrn
+from dobj.matrix import matx, matutils
+from dobj.data import data
 
 
-class _Predict(matutils, matx):
+class _Predict:
     
     # returns True for y=1 and False for y=0
     @staticmethod
-    def _pc1(d: dict, x: matx, ret=False) -> bool:
+    def _py(x: matx, d: dict, ret='a') -> int:
         try:
-            if Comp.eqval(d["n"], x.rowlen) is None:
+            if (dif := [matutils.msub(x, matx(i, True, 'c'), False, 'c') for i in d["mean"]]) is None:
                 raise Exception
-            dif = [matutils.msub(x, matx(i, True, True), False, True) for i in d["mean"]]
-            if dif is None:
+            if (cov := matx(d["cov"], True, 'c')) is None:
                 raise Exception
-            cov = matx(d["cov"], True, True)
-            if cov is None:
+            e, pi = cnst.e(), cnst.pi()
+            if (dn := alg.mul(alg.pwr(alg.mul(2, pi), alg.div(d["n"], 2)), alg.pwr(matutils.dnant(cov, False, 'c'), 0.5))) is None:
                 raise Exception
-            dn = pwr(Decimal(str(2 * math.pi)), Decimal(str(d["n"] / 2)), False, True) * pwr(matutils.dnant(cov, False, True), Decimal(str(1 / 2)))
-            if dn is None:
-                raise Exception
-            h = [pwr(Decimal(str(math.e)), (matutils.mmult(matutils.mmult(i, matutils.invse(cov, False, True), False, True), matutils.tpose(i, False, True), False, True).matx[0][0]) / -2, False, True) / dn for i in dif]
-            h = [h[0]*Decimal(d["phi"][0]), h[1]*Decimal(d["phi"][1])]
+            h = [alg.mul(d["phi"][i[0]], alg.div(alg.pwr(e, alg.div(matutils.mmult(matutils.mmult(i[1], cov.invse(), False, 'c'), matutils.tpose(i[1]), False, 'c').matx[0][0], -2)), dn)) for i in enumerate(dif)]
             if h is None:
                 raise Exception
             if h[0] > h[1]:
-                return False
+                return 0
             else:
-                return True
+                return 1
         except Exception as e:
-            Terminate.retrn(ret, e)
-
-
-class PGDA(_Predict, matx, Comp):
-    @classmethod
-    def y(cls, d: dict, x: list, ret=False) -> int:
+            retrn(ret, e)
+    
+    @staticmethod
+    def _pally(x: matx, d: dict, ret='a') -> tuple[int, ...]:
         try:
-            if Comp.tdict(d) is None:
+            if (dif := [matutils.saddcnst([alg.mul(-1, j) for j in i], x, False, False, 'c') for i in d["mean"]]) is None:
                 raise Exception
-            x = matx(x, ret=True)
+            if (cov := matx(d["cov"], True, 'c')) is None:
+                raise Exception
+            e, pi = cnst.e(), cnst.pi()
+            if (dn := alg.mul(alg.pwr(alg.mul(2, pi), alg.div(d["n"], 2)), alg.pwr(matutils.dnant(cov, False, 'c'), 0.5))) is None:
+                raise Exception
+            r = list()
+            d0, d1 = [[alg.mul(d["phi"][i[0]], alg.div(alg.pwr(e, alg.div(k, -2)), dn)) for k in [matutils.mmult(matutils.mmult(j, cov.invse()), matutils.tpose(j)).matx[0][0] for j in matutils.matlxtox(i[1], False, 'c')]] for i in enumerate(dif)]
+            for i in range(len(d0)):
+                if d0[i] > d1[i]:
+                    r.append(0)
+                else:
+                    r.append(1)
+            return tuple(r)
+        except Exception as e:
+            retrn(ret, e)
+
+
+class PGDA(_Predict):
+    
+    @classmethod
+    def y(cls, x: list, d: dict, ret='a') -> int:
+        try:
+            if tdict.dic(d) is None:
+                raise Exception
+            x = matx(x, ret='c')
             if x is None:
                 raise Exception
-            if Comp.eqval(d["n"], x.rowlen) is None:
+            if eqval(d["n"], x.rowlen) is None:
                 raise Exception
-            y = _Predict._pc1(d, x, True)
-            if y is True:
-                return 1
-            else:
-                return 0
+            return _Predict._py(x, d, 'c')
         except Exception as e:
-            Terminate.retrn(ret, e)
-
+            retrn(ret, e)
+    
+    @classmethod
+    def ally(cls, x: tuple[list | tuple] | list[list | tuple], d: dict, ret='a') -> tuple[int, ...]:
+        try:
+            if tdict.dic(d) is None:
+                raise Exception
+            x = matx(x, ret='c')
+            if x is None:
+                raise Exception
+            if eqval(d["n"], x.rowlen) is None:
+                raise Exception
+            return _Predict._pally(x, d, 'c')
+        except Exception as e:
+            retrn(ret, e)
 
     @classmethod
-    def clas(cls, d: dict, x: list, ret=False) -> int:
+    def clas(cls, x: list, d: dict, ret='a') -> int:
         try:
-            if Comp.tdict(d) is None:
+            if tdict.dic(d) is None:
                 raise Exception
             c = dict()
             for i in d.items():
-                cl = cls.y(i[1], x, True)
-                if cl is None:
+                if (cl := cls.y(x, i[1], 'c')) is None:
                     raise Exception
                 if cl == 1:
                     c[i[0][1]] = c.setdefault(i[0][1], 0) + 1
@@ -81,121 +101,125 @@ class PGDA(_Predict, matx, Comp):
                     mc = i[0]
             return mc
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
+    
+    @classmethod
+    def allclas(cls, x: tuple[list | tuple] | list[list | tuple], d: dict, ret='a') -> dict:
+        try:
+            if tdict.dic(d) is None:
+                raise Exception
+            r1 = dict()
+            x = matutils.matlxtox(x, False, 'c')
+            for i in d.items():
+                if (cl := cls.ally(x, i[1], 'c')) is not None:
+                    for j in enumerate(cl):
+                        r1[x[j[0]]] =  r1.setdefault(x[j[0]], []) + [i[0][j[1]], ]
+                else:
+                    raise Exception
+            r = list()
+            return tuple([stat.mode(r1[tuple(i)]) for i in x])
+        except Exception as e:
+            retrn(ret, e)
 
 
-class _Calculate(_Predict, matutils, matx):
+class _Calculate(_Predict):
 
     # misclassifications after classification
     @classmethod
-    def _misclassed(cls, d: tuple, d1: dict, const: tuple[bool, bool], method='logreg', ret=False) -> dict:
+    def _misclassed(cls, d: tuple, d1: dict, const: tuple[bool, bool], ret='a') -> dict:
         try:
-            d = (matutils.matlxtox(d[0], False, True), d[1])
-            dic = dict()
+            dic, y = dict(), _Predict._pally(d[0], d1, 'c')
             dic.setdefault("0", [0, 0, []])
             dic.setdefault("1", [0, 0, []])
             for i in range(d[1].collen):
-                if d[1].mele(i, 0, False, True) == 0:
+                if d[1].mele(i, 0, False, 'c') == 0:
                     dic["0"][0] += 1
-                    if _Predict._pc1(d1, d[0][i]) is True:
+                    if y[i] == 1:
                         dic["0"][1] += 1
                         dic["0"][2].append([str(j) for j in d[0][i].matxl()[0]])
                 else:
                     dic["1"][0] += 1
-                    if _Predict._pc1(d1, d[0][i]) is False:
+                    if y[i] == 0:
                         dic["1"][1] += 1
                         dic["1"][2].append([str(j) for j in d[0][i].matxl()[0]])
-                    return dic
+            return dic
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
     # returns mean x and phi for GDA
     @staticmethod
-    def _meanx_phi(d: tuple, ret=False) -> dict:
+    def _meanx_phi(d: tuple, ret='a') -> dict:
         try:
-            y1 = 0
-            y2 = 0
-            d = (matutils.matlxtox(d[0], False, True), d[1])
+            y1, y2 = 0, 0
+            d = (matutils.matlxtox(d[0], False, 'c'), d[1])
             lx = d[0][0].rowlen
-            x1 = matutils.eqelm(1, lx, Decimal('0.0'), False, True)
-            x2 = matutils.eqelm(1, lx, Decimal('0.0'), False, True)
+            x1, x2 = matutils.eqelm(1, lx, Decimal('0.0'), False, 'c'), matutils.eqelm(1, lx, Decimal('0.0'), False, 'c')
             for i in range(d[1].collen):
-                if d[1].mele(i, 0, False, True) == 0:
+                if d[1].mele(i, 0, False, 'c') == 0:
                     y1 += 1
-                    x1.matx = matutils.madd(x1, d[0][i], False, True)
+                    x1.matx = matutils.madd(x1, d[0][i], False, 'c')
                 else:
-                    x2.matx = matutils.madd(x2, d[0][i], False, True)
+                    x2.matx = matutils.madd(x2, d[0][i], False, 'c')
                     y2 += 1
-            y1 = Comp.tdeciml(y1)
-            y2 = Comp.tdeciml(y2)
-            return {"mean": [matutils.smult(1 / y1, x1, False, True).matxl()[0], matutils.smult(1 / y2, x2, False, True).matxl()[0]],
+            y1, y2 = deciml(y1), deciml(y2)
+            return {"mean": [matutils.smult(1 / y1, x1, False, 'c').matxl()[0], matutils.smult(1 / y2, x2, False, 'c').matxl()[0]],
                     "phi": [y1 / (y1 + y2), y2 / (y1 + y2)]}
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
     # returns covariance and n for GDA
     @staticmethod
-    def _cov_n(d: tuple, x1: matx, x2: matx, ret=False) -> dict:
+    def _cov_n(d: tuple, x1: matx, x2: matx, ret='a') -> dict:
         try:
-            d = (matutils.matlxtox(d[0], False, True), d[1])
+            d = (matutils.matlxtox(d[0], False, 'c'), d[1])
             xl = d[0][0].rowlen
-            cov = matutils.eqelm(xl, xl, Decimal('0.0'), False, True)
+            cov = matutils.eqelm(xl, xl, Decimal('0.0'), False, 'c')
             for i in range(d[1].collen):
-                if d[1].mele(i, 0, False, True) == 0:
-                    xd = matutils.msub(d[0][i], x1, False, True)
-                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, True), xd, False, True), False, True)
+                if d[1].mele(i, 0, False, 'c') == 0:
+                    xd = matutils.msub(d[0][i], x1, False, 'c')
+                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, 'c'), xd, False, 'c'), False, 'c')
                 else:
-                    xd = matutils.msub(d[0][i], x2, False, True)
-                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, True), xd, False, True), False, True)
-            return {"cov": matutils.smult(Decimal(str(1 / d[1].collen)), cov, False, True).matxl(), "n": xl}
+                    xd = matutils.msub(d[0][i], x2, False, 'c')
+                    cov.matx = matutils.madd(cov, matutils.mmult(matutils.tpose(xd, False, 'c'), xd, False, 'c'), False, 'c')
+            return {"cov": matutils.smult(alg.div(1, d[1].collen), cov, False, 'c').matxl(), "n": xl}
         except Exception as e:
-            Terminate.retrn(ret, e)
-
-    # performs gaussian discriminant analysis
-    @classmethod
-    def _gda(cls, d: data, ret=False) -> dict:
-        try:
-            d = d.data
-            dic1 = cls._meanx_phi(d, True)
-            if dic1 is None:
-                raise Exception
-            dic2 = cls._cov_n(d, matx(dic1["mean"][0]), matx(dic1["mean"][1]), True)
-            if dic2 is None:
-                raise Exception
-            dic1.update(dic2)
-            miscl = cls._misclassed(d, dic1, None, 'gda', True)
-            if miscl is None:
-                raise Exception
-            dic1.setdefault("misclassifications", miscl)
-            dic1.update({"mean": [[str(j) for j in i] for i in dic1["mean"]], "cov": [[str(j) for j in i] for i in dic1["cov"]], "phi": [str(i) for i in dic1["phi"]]})
-            return dic1
-        except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
 
-class GDA(_Calculate, Comp):
+def _gda(d: data, ret='a') -> dict:
+    try:
+        d = d.data
+        if (dic1 := _Calculate._meanx_phi(d, 'c')) is None:
+            raise Exception
+        if (dic2 := _Calculate._cov_n(d, matx(dic1["mean"][0]), matx(dic1["mean"][1]), 'c')) is None:
+            raise Exception
+        dic1.update(dic2)
+        if (miscl := _Calculate._misclassed(d, dic1, None, 'c')) is None:
+            raise Exception
+        dic1.setdefault("misclassifications", miscl)
+        dic1.update({"mean": [[str(j) for j in i] for i in dic1["mean"]], "cov": [[str(j) for j in i] for i in dic1["cov"]], "phi": [str(i) for i in dic1["phi"]]})
+        return dic1
+    except Exception as e:
+        retrn(ret, e)
+
+
+class GDA:
     
-    @classmethod
-    def gda(cls, d: data, ret=False) -> dict:
+    @staticmethod
+    def gda(d: data, ret='a') -> dict:
         try:
-            if Comp.tdata(d) is None:
+            if tdata(d) is None:
                 raise Exception
-            return _Calculate._gda(d, True)
+            return _gda(d, 'c')
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
     @classmethod
-    def gdagc(cls, d: dict, ret=False) -> dict:
+    def gdagc(cls, d: dict, ret='a') -> dict:
         try:
             dic = dict()
             for i in d.items():
-                dic[i[0]] = cls.gda(i[1], True)
+                dic[i[0]] = cls.gda(i[1], 'c')
             return dic
         except Exception as e:
-            Terminate.retrn(ret, e)
-
-
-# a = GDA.gda(
-#    data([[10, 10, 10], [5, 7, 9], [4, 2, 7], [5, 9, 1], [20, 20, 20], [21, 25, 22], [14, 18, 12], [12, 15, 11]],
-#         [[0], [0], [0], [0], [1], [1], [1], [1]]))
-# print(a)
+            retrn(ret, e)

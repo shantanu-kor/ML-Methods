@@ -20,7 +20,7 @@ I. Preferred format of .json file
 
 II. To convert data into "data" object
 
-  > from ml_methods.utils import GetData
+  > from ml_methods.algorithms.algoutils import GetData
   
   > GetData.regression("path/to/file/*.json")
   >>  returns "data" object for regression
@@ -84,7 +84,7 @@ III. To create data object
 
 IV. To save "dict" object to .json file
 
-  > from ml_methods.utils import Results
+  > from ml_methods.algorithms.algoutils import Results
   
   > Results.save(d: dict, l: /path/to/file/*json, k: key for d)
 
@@ -154,7 +154,7 @@ V. ALGORITHMS
 
   + For "dict" with multiple combinations of classes; Using gradient descent
 
-    > c = LogReg.gradesgc(d: dict, p: {("0", "1"): {"parameters": [list of parameters]}, ("0", "2"): ...}, a: alpha, m: maximum iterations, pr: minimum value of rms(relative error of parameters), scale: bool, const: (bool, bool))
+    > c = LogReg.gradesgc(d: dict, p: {("0", "1"): [list of parameters], ("0", "2"): ...}, a: alpha, m: maximum iterations, pr: minimum value of rms(relative error of parameters), scale: bool, const: (bool, bool))
 
     - returns 
       > {('0', '1'): {"parameters": list of final parameters, "iterations": total iterations, "misclassifications": {"0": [number of points in class, number of misclassified points in class, list of misclassified points], ...}}, ('0', '2'): ...}
@@ -162,25 +162,25 @@ V. ALGORITHMS
     - example output
       > {('0', '1'): {'parameters': [-12.589653400309972, 0.233307861859726, 0.012958330133487328], 'iterations': 2890, 'misclassifications': {'0': [20, 0, []], '1': [15, 0, []]}}}
 
-  + To make a "dict" of parameters for .gradesgc and .gradessvgc
+  + To make a "dict" of parameters for .gradesgc
 
-    > import utils
+    > from ml_methods.algorithms.algoutils import Parameter
 
     - Same starting parameters for all groups
 
-      > p = utils.parlogreg(d: dict, p: [list of parameters])
+      > p = Parameter.parlogreg(d: dict, p: [list of parameters])
 
       - returns 
-        > {("0", "1"): {"parameters": [list of parameters]}, ("0", "2"): ...}
+        > {("0", "1"): [parameter], ("0", "2"): ...}
 
     - Different starting parameters for all groups from terminal
    
-      > p = utils.parlogregter(d: dict)
+      > p = Parameter.parlogregter(d: dict)
 
       - enter parameters in terminal
 
       - returns
-        > {("0", "1"): {"parameters": [list of parameters]}, ("0", "2"): ...}
+        > {("0", "1"): [parameters], ("0", "2"): ...}
 
 4. To perform gaussian discriminant analysis
 
@@ -219,7 +219,7 @@ V. ALGORITHMS
     
   + For logistic regression
     > from ml_methods.algorithms.logreg import PLogReg
-    > PLogReg(x: list of variable values, p: list of parameters, const: (bool, bool))
+    > PLogReg.y(x: list of variable values, p: list of parameters, const: (bool, bool))
     >> returns predicted value
 
     - example
@@ -246,5 +246,5 @@ V. ALGORITHMS
     >> returns predicted class
 
     - example
-      > Predict.gdagc([100, 10], {('0', '1'): {'mean': [(21.7614897845058, 28.536074158247267), [84.97363451177574, 71.6873834727597]], 'phi': [0.5714285714285714, 0.42857142857142855], 'cov': [[239.8146684608749, 3.335434223573996], [3.335434223573996, 149.664159418036]], 'n': 2, 'misclassifications': {'0': [20, 0, []], '1': [15, 0, []]}}})
+      > PGDA.clas([100, 10], {('0', '1'): {'mean': [(21.7614897845058, 28.536074158247267), [84.97363451177574, 71.6873834727597]], 'phi': [0.5714285714285714, 0.42857142857142855], 'cov': [[239.8146684608749, 3.335434223573996], [3.335434223573996, 149.664159418036]], 'n': 2, 'misclassifications': {'0': [20, 0, []], '1': [15, 0, []]}}})
       >> '1'

@@ -1,133 +1,127 @@
-# import os, sys
-
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from decimal import Decimal
-import math
-from cmdexec import Terminate
-from matrix import matx, matutils
+from utils.deciml import abs, algbra as alg, Decimal
+from utils.cmpr import eqval, tdeciml, tint
+from utils.terminate import retrn
+from dobj.matrix import matx, matutils
 from algoutils import Calculate
 
 
-class _Calculate(matutils, matx):
+class _Calculate:
 
     @staticmethod
-    def _ulp(ut: matx, lt: matx, p: matx, c: matx, ret=False) -> matx:
+    def _ulp(ut: matx, lt: matx, x: matx, c: matx, ret='a') -> matx:
         try:
-            pn = list()
+            xn = list()
             for i in range(lt.collen):
                 pn1 = 0
                 for j in range(lt.rowlen):
                     if j < i:
-                        pn1 += lt.mele(i, j, False, True) * p.mele(0, j, False, True)
-                pn.append((pn1,))
-            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, False, True), False, True)
+                        pn1 = alg.add(pn1, alg.mul(lt.mele(i, j, False, 'c'), x.mele(0, j, False, 'c')))
+                xn.append((pn1,))
+            x = matutils.matlxtox(matutils.msub(matx(tuple(xn), False, 'c'), c, False, 'c'), False, 'c')
             for i in range(ut.collen):
                 if i > 0:
-                    pn.matx = matutils.addmatx(matutils.madd(matutils.mmult(pn, matx(tuple([(j,) for j in ut.mrow(ut.collen - 1 - i, False, True)[ut.collen - i:]]), False, True), False, True), p[-(i + 1)], False, True), pn, chk=False, ret=True)
+                    xn.matx = matutils.addmatx(matutils.madd(matutils.mmult(xn, matx(tuple([(j,) for j in ut.mrow(ut.collen - 1 - i, False, 'c')[ut.collen - i:]]), False, 'c'), False, 'c'), x[-(i + 1)], False, 'c'), xn, chk=False, ret='c')
                 else:
-                    pn = p[-1]
-            return pn
+                    xn = x[-1]
+            return xn
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
     @staticmethod
-    def _lup(lt: matx, ut: matx, p: matx, c: matx, ret=False) -> matx:
+    def _lup(lt: matx, ut: matx, x: matx, c: matx, ret='a') -> matx:
         try:
-            pn = list()
+            xn = list()
             for i in range(ut.collen):
                 pn1 = 0
                 for j in range(ut.rowlen):
                     if j > i:
-                        pn1 += ut.mele(i, j, False, True) * p.mele(0, j, False, True)
-                pn.append((pn1,))
-            p = matutils.matlxtox(matutils.msub(matx(tuple(pn), False, True), c, False, True), False, True)
+                        pn1 = alg.add(pn1, alg.mul(ut.mele(i, j, False, 'c'), x.mele(0, j, False, 'c')))
+                xn.append((pn1,))
+            x = matutils.matlxtox(matutils.msub(matx(tuple(xn), False, 'c'), c, False, 'c'), False, 'c')
             for i in range(lt.collen):
                 if i > 0:
-                    pn.matx = matutils.addmatx(pn, matutils.madd(matutils.mmult(pn, matx(tuple([(j,) for j in lt.mrow(i, False, True)[:i]]), False, True), False, True), p[i], False, True), chk=False, ret=True)
+                    xn.matx = matutils.addmatx(xn, matutils.madd(matutils.mmult(xn, matx(tuple([(j,) for j in lt.mrow(i, False, 'c')[:i]]), False, 'c'), False, 'c'), x[i], False, 'c'), chk=False, ret='c')
                 else:
-                    pn = p[0]
-            return pn
+                    xn = x[0]
+            return xn
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
 
-class Method(_Calculate, matutils, Calculate, matx):
+class Method(_Calculate, Calculate):
     
-    @classmethod
-    def _inverse(cls, a: matx, b: matx, ret=False) -> matx:
+    @staticmethod
+    def _inverse(a: matx, b: matx, ret='a') -> matx:
         try:
-            return matutils.mmult(matutils.tpose(b, False, True), matutils.invse(a, False, True), False, True)
+            return matutils.mmult(matutils.tpose(b, False, 'c'), matutils.invse(a, False, 'c'), False, 'c')
         except Exception as e:
-            Terminate.retrn(ret, e)
-    
+            retrn(ret, e)
 
-    @classmethod
-    def _uttform(cls, a: matx, b: matx, ret=False) -> matx:
+    @staticmethod
+    def _uttform(a: matx, b: matx, ret='a') -> matx:
         try:
             for i in range(a.collen):
                 an = list(a.matx)
                 bn = list(b.matx)
-                acol = matutils.gele(a, [i, ], False, False, True).matx[0]
+                acol = matutils.gele(a, [i, ], False, False, 'c').matx[0]
                 acm = max([acol[j] for j in range(len(acol)) if j > i - 1])
                 for j in range(a.collen):
-                    if a.mele(0, j, False, True) == acm:
+                    if a.mele(0, j, False, 'c') == acm:
                         an.insert(i, an.pop(j))
                         bn.insert(i, bn.pop(j))
                         break
-                a.matx = matx(tuple(an), False, True)
-                b.matx = matx(tuple(bn), False, True)
-                ai = a.mele(i, i, False, True)
+                a.matx = matx(tuple(an), False, 'c')
+                b.matx = matx(tuple(bn), False, 'c')
+                ai = a.mele(i, i, False, 'c')
                 if ai == 0:
                     raise Exception
                 for j in range(a.collen):
                     if j > i:
-                        facx = -a.mele(j, i, False, True) / ai
-                        a.matx = matutils.tform(a, j, i, facx, True, False, True)
-                        b.matx = matutils.tform(b, j, i, facx, True, False, True)
-            p = matx((b.mele(b.collen - 1, 0, False, True) / a.mele(a.collen - 1, a.rowlen - 1),), False, True)
+                        facx = alg.mul(-1, alg.div(a.mele(j, i, False, 'c'), ai))
+                        a.matx = matutils.tform(a, j, i, facx, True, False, 'c')
+                        b.matx = matutils.tform(b, j, i, facx, True, False, 'c')
+            x = matx((alg.div(b.mele(b.collen - 1, 0, False, 'c'), a.mele(a.collen - 1, a.rowlen - 1)),), False, 'c')
             del an, acm, acol, facx, ai
             for i in range(a.collen):
                 if i == 0:
                     continue
-                an = matx(tuple([(a.mele(a.collen - 1 - i, a.rowlen - 1 + j - i + 1, False, True),) for j in range(i)]), False, True)
-                p.matx = matutils.addmatx(matutils.smult(1 / a.mele(a.collen - 1 - i, a.rowlen - 1 - i, False, True), matutils.msub(matx(b.mrow(b.collen - 1 - i, False, True), False, True), matutils.mmult(p, an, False, True), False, True), False, True), p, False, False, True)
+                an = matx(tuple([(a.mele(a.collen - 1 - i, a.rowlen - 1 + j - i + 1, False, 'c'),) for j in range(i)]), False, 'c')
+                x.matx = matutils.addmatx(matutils.smult(alg.div(1, a.mele(a.collen - 1 - i, a.rowlen - 1 - i, False, 'c')), matutils.msub(matx(b.mrow(b.collen - 1 - i, False, 'c'), False, 'c'), matutils.mmult(x, an, False, 'c'), False, 'c'), False, 'c'), x, False, False, 'c')
             del an
-            return p
+            return x
         except Exception as e:
-            Terminate.retrn(ret, e)
-    
+            retrn(ret, e)
 
     @classmethod
-    def _gauseidel(cls, a: matx, b: matx, pmpr: tuple[matx, int, Decimal], ret=False) -> tuple[matx, int]:
+    def _gauseidel(cls, a: matx, b: matx, xmpr: tuple[matx, int, Decimal], ret='a') -> tuple[matx, int]:
         try:
-            p = pmpr[0]
-            m = pmpr[1]
-            pr = pmpr[2]
+            x = xmpr[0]
+            m = xmpr[1]
+            pr = xmpr[2]
             for i in range(a.rowlen):
                 row = None
                 el = 0
-                ele = a.mele(i, i, False, True)
+                ele = a.mele(i, i, False, 'c')
                 fac = [Decimal('1.0') for _ in range(a.collen - 1)]
                 if ele == 0:
                     for j in range(a.collen):
                         if j != i:
-                            el = a.mele(j, i, False, True)
+                            el = a.mele(j, i, False, 'c')
                             if el != 0:
                                 if row == None:
                                     row = j
-                                if math.fabs(el) < math.fabs(a.mele(row, i, False, True)):
+                                if abs(el) < abs(a.mele(row, i, False, 'c')):
                                     row = j
                     if row is None:
                         raise Exception
-                    el = a.mele(row, i, False, True)
-                    a.matx = matutils.tform(a, i, row, (-1) / el, True, False, True)
-                    b.matx = matutils.tform(b, i, row, (-1) / el, True, False, True)
+                    el = a.mele(row, i, False, 'c')
+                    a.matx = matutils.tform(a, i, row, alg.div(-1, el), True, False, 'c')
+                    b.matx = matutils.tform(b, i, row, alg.div(-1, el), True, False, 'c')
                 else:
-                    fac.insert(i, -1 / ele)
-                    a.matx = matutils.smultfac(tuple(fac), a, chk=False, ret=True)
-                    b.matx = matutils.smultfac(tuple(fac), b, chk=False, ret=True)
-            a.matx = matutils.madd(a, matutils.sclrm(a.rowlen, Decimal('1.0'), False, True), False, True)
-            a = matutils.uldcompose(a, False, True)
+                    fac.insert(i, alg.div(-1, ele))
+                    a.matx = matutils.smultfac(tuple(fac), a, chk=False, ret='c')
+                    b.matx = matutils.smultfac(tuple(fac), b, chk=False, ret='c')
+            a.matx = matutils.madd(a, matutils.sclrm(a.rowlen, Decimal('1.0'), False, 'c'), False, 'c')
+            a = matutils.uldcompose(a, False, 'c')
             ut = a[0]
             lt = a[1]
             del a
@@ -136,94 +130,127 @@ class Method(_Calculate, matutils, Calculate, matx):
             for i in range(ut.collen):
                 for j in range(lt.rowlen):
                     if j > i:
-                        uts += ut.mele(i, j, False, True)
+                        uts += ut.mele(i, j, False, 'c')
                     elif j < i:
-                        lts += lt.mele(i, j, False, True)
-            if math.fabs(lts) > math.fabs(uts):
+                        lts += lt.mele(i, j, False, 'c')
+            if abs(lts) > abs(uts):
                 c = 0
-                while (c := c + 1) <= m:
-                    pn = _Calculate._lup(lt, ut, p, b)
-                    if pn is None:
+                m += 1
+                while (c := c + 1) != m:
+                    xn = _Calculate._lup(lt, ut, x, b)
+                    if xn is None:
                         raise Exception
-                    err = Calculate._cmperrpr(p, pn, pr, True)
+                    err = Calculate._cmperrpr(x, xn, pr, 'c')
                     match err:
                         case True:
-                            p.matx = pn
+                            x.matx = xn
                             break
                         case False:
-                            p.matx = pn
+                            x.matx = xn
                         case _:
                             raise Exception
             else:
                 c = 0
-                while (c := c + 1) <= m:
-                    pn = _Calculate._ulp(ut, lt, p, b)
-                    if pn is None:
+                m += 1
+                while (c := c + 1) != m:
+                    xn = _Calculate._ulp(ut, lt, x, b)
+                    if xn is None:
                         raise Exception
-                    err = Calculate._cmperrpr(p, pn, pr, True)
+                    err = Calculate._cmperrpr(x, xn, pr, 'c')
                     match err:
                         case True:
-                            p.matx = pn
+                            x.matx = xn
                             break
                         case False:
-                            p.matx = pn
+                            x.matx = xn
                         case _:
                             raise Exception
             if c == m + 1:
-                return p, c - 1
-            return p, c
+                return x, c - 1
+            return x, c
         except Exception as e:
-            Terminate.retrn(ret, e)
-    
+            retrn(ret, e)
 
-    @classmethod
-    def _tridia(cls, a: matx, b: matx, ret=False) -> matx:
+    @staticmethod
+    def _tridia(a: matx, b: matx, ret='a') -> matx:
         try:
-            for i in range(int(a.rowlen / 2) + 1):
-                elea = a.mele(i + 1, i, False, True)
-                cola = a.mcol(i, False, True)
+            for i in range(int(alg.div(a.rowlen, 2)) + 1):
+                elea = a.mele(i + 1, i, False, 'c')
+                cola = a.mcol(i, False, 'c')
                 for j in range(a.collen):
                     if j > i + 1:
-                        a.matx = matutils.tform(a, j, i + 1, - cola[j] / elea, True, False, True)
-                        b.matx = matutils.tform(b, j, i + 1, - cola[j] / elea, True, False, True)
-                elec = a.mele(a.collen - 2 - i, a.rowlen - 1 - i, False, True)
-                colc = a.mcol(a.rowlen - 1 - i, False, True)
+                        a.matx = matutils.tform(a, j, i + 1, alg.div(alg.mul(-1, cola[j]), elea), True, False, 'c')
+                        b.matx = matutils.tform(b, j, i + 1, alg.div(alg.mul(-1, cola[j]), elea), True, False, 'c')
+                elec = a.mele(a.collen - 2 - i, a.rowlen - 1 - i, False, 'c')
+                colc = a.mcol(a.rowlen - 1 - i, False, 'c')
                 for j in range(a.collen):
                     if j < a.collen - 2 - i:
-                        a.matx = matutils.tform(a, j, a.collen - 2 - i, - colc[j] / elec, True, False, True)
-                        b.matx = matutils.tform(b, j, a.collen - 2 - i, - colc[j] / elec, True, False, True)
+                        a.matx = matutils.tform(a, j, a.collen - 2 - i, alg.div(alg.mul(-1, colc[j]), elec), True, False, 'c')
+                        b.matx = matutils.tform(b, j, a.collen - 2 - i, alg.div(alg.mul(-1, colc[j]), elec), True, False, 'c')
             del elea, elec, cola, colc, j
             x = a
-            y = matutils.tpose(b, False, True).matx[0]
+            y = matutils.tpose(b, False, 'c').matx[0]
             a = list()
             b = list()
             c = list()
             for i in range(x.collen):
                 if i == 0:
                     a.append(Decimal('0.0'))
-                    b.append(x.mele(i, i, False, True))
-                    c.append(x.mele(i, i + 1, False, True))
+                    b.append(x.mele(i, i, False, 'c'))
+                    c.append(x.mele(i, i + 1, False, 'c'))
                 elif i == x.collen - 1:
-                    a.append(x.mele(i, i - 1, False, True))
-                    b.append(x.mele(i, i, False, True))
+                    a.append(x.mele(i, i - 1, False, 'c'))
+                    b.append(x.mele(i, i, False, 'c'))
                     c.append(Decimal('0.0'))
                 else:
-                    a.append(x.mele(i, i - 1, False, True))
-                    b.append(x.mele(i, i, False, True))
-                    c.append(x.mele(i, i + 1, False, True))
+                    a.append(x.mele(i, i - 1, False, 'c'))
+                    b.append(x.mele(i, i, False, 'c'))
+                    c.append(x.mele(i, i + 1, False, 'c'))
             del x
             theta = [Decimal('0.0'), ]
             phi = [Decimal('0.0'), ]
             for i in range(len(a)):
-                dn = (a[i] * theta[i]) + b[i]
+                dn = alg.add(alg.mul(a[i], theta[i]), b[i])
                 theta.append(- c[i] / dn)
-                phi.append((y[i] - (a[i] * phi[i])) / dn)
+                phi.append(alg.div(alg.sub(y[i], alg.mul(a[i], phi[i])), dn))
             theta.pop(0)
             phi.pop(0)
-            p = [Decimal('0.0'), ]
+            x = [Decimal('0.0'), ]
             for i in range(len(theta)):
-                p.insert(0, (p[0] * theta[-(i + 1)]) + phi[-(i + 1)])
-            p.pop(-1)
-            return matx(tuple(p), False, True)
+                x.insert(0, alg.add(alg.mul(x[0], theta[-(i + 1)]), phi[-(i + 1)]))
+            x.pop(-1)
+            return matx(tuple(x), False, 'c')
         except Exception as e:
-            Terminate.retrn(ret, e)
+            retrn(ret, e)
+
+def inverse(a: list | tuple | matx, b: list | tuple | matx, ret='a') -> matx:
+    try:
+        if (a := matx(a, True, 'c')) is None or (b := matx(b, True, 'c')) is None:
+            raise Exception
+        return Method._inverse(a, b, 'c')
+    except Exception as e:
+        retrn(ret, e)
+
+def uttform(a: list | tuple | matx, b: list | tuple | matx, ret='a') -> matx:
+    try:
+        if (a := matx(a, True, 'c')) is None or (b := matx(b, True, 'c')) is None:
+            raise Exception
+        return Method._uttform(a, b, 'c')
+    except Exception as e:
+        retrn(ret, e)
+
+def gauseidel(a: list | tuple | matx, b: list | tuple | matx, x: list | tuple | matx, m: int, pr: float, ret='a') -> matx:
+    try:
+        if (a := matx(a, True, 'c')) is None or (b := matx(b, True, 'c')) is None or (b := matx(b, True, 'c')) is None or eqval([x.rowlen, a.collen, 1], [a.rowlen, b.collen, b.rowlen]) is None or (m := tint.intn(m)) is None or (pr := tdeciml.decip(pr)) is None:
+            raise Exception
+        return Method._gauseidel(a, b, (x, m, pr), 'c')
+    except Exception as e:
+        retrn(ret, e)
+
+def tridia(a: list | tuple | matx, b: list | tuple | matx, ret='a') -> matx:
+    try:
+        if (a := matx(a, True, 'c')) is None or (b := matx(b, True, 'c')) is None:
+            raise Exception
+        return Method._tridia(a, b, 'c')
+    except Exception as e:
+        retrn(ret, e)
