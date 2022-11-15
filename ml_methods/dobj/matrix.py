@@ -1302,7 +1302,7 @@ class matstat:
                             lr = a.rowlen
                         case _:
                             raise Exception("Invalid argument: samp => bool")
-                    return matutils.smult(alg.div(1, lr), melutils.add(melutils.pow([Decimal('1.0'), Decimal('2.0')], matutils.saddcnst([alg.mul(-1, i) for i in cls.amean(a, 'row', False, 'c')], a, True, False, 'c'), 'all', chk=False, ret='c'), 'all', False, False, 'c'), False, 'c').matx[0]
+                    return matutils.smult(alg.div(1, lr), melutils.add(melutils.pow([Decimal('1.0'), Decimal('2.0')], matutils.saddcnst([alg.mul(-1, i) for i in cls.amean(a, 'row', False, 'c')], a, True, False, 'c').tpose(), 'all', chk=False, ret='c'), 'all', False, False, 'c'), False, 'c').matx[0]
                 case 'col':
                     a = matutils.saddcnst([alg.mul(-1, i) for i in cls.amean(a, 'col', False, 'c')], a, False,  False, 'c')
                     match samp:
