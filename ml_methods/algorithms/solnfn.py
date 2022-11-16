@@ -123,9 +123,11 @@ class SolveFn:
             value = dict()
             for i in x.matx[0]:
                 c = -1
+                nx=i
+                nxv=fn.val(nx)
                 while (c := c + 1) < m:
-                    nx = alg.sub(i, alg.div(fn.val(i), fn.dval(i)))
-                    if fn.val(nx) < pr:
+                    nx = alg.sub(nx, alg.div(nxv, fn.dval(nx)))
+                    if abs(nxv:=fn.val(nx)) < pr:
                         value[str(i)] = (str(nx), c, )
                         break
             return value
