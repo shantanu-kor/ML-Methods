@@ -1,6 +1,6 @@
 from decimal import ROUND_HALF_UP, Decimal, getcontext
 from terminate import retrn
-
+from random import randint, seed
 
 _DecimalPrecision = 16
 
@@ -52,6 +52,94 @@ def deciml(a: float | int | str | Decimal) -> Decimal:
         return Decimal(a) + 0
     except:
         return Decimal('NaN')
+
+# args: (start number,end number), decimal precision, seed
+def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
+    try:
+        if s is not None:seed(s);
+        if __n==1:return randint(*__i);
+        return tuple(map(lambda _:randint(*__i),range(__n)))
+    except Exception as e:retrn('c');
+    
+# rdecimal.random(n)
+# args: (start number,end number), decimal precision
+class rdeciml:
+    
+    def __init__(self,__i:tuple[int|float|Decimal|str,int|float|Decimal|str], __pr=None)->None:
+        try:
+            global _DecimalPrecision
+            if __pr is None:__pr=_DecimalPrecision;
+            def __toint(__i,__pr)->int:
+                if len(i:=str(__i).split('E'))==1:i=i[0].split('e');
+                n=1
+                if len(i)==2:
+                    i=[i[0].split('.'),int(i[1])]
+                    if i[0][0][0]=='-':i[0][0]=i[0][0][1:];n=-1;
+                    if len(i[0])==1:
+                        if i[1]<0:
+                            if (s:=len(i[0][0])+i[1])<0:
+                                if (s:=s+__pr)<0:r=0;
+                                else:
+                                    i=i[0][0]
+                                    if (s:=len(i)-s)<0:
+                                        for _ in range(-s):i+='0';
+                                        r=int(i)
+                                    else:r=int(i[:s])
+                            else:
+                                i=[i[0][0][:s],i[0][0][s:]]
+                                if (s:=len(i[1])-__pr)<0:
+                                    for _ in range(-s):i[1]+='0';
+                                    r=int(i[0]+i[1])
+                                else:r=int(i[0]+i[1][:__pr])
+                        else:
+                            s=str()
+                            for _ in range(i[1]+__pr):s+='0';
+                            r=int(i[0][0]+s)
+                    else:
+                        i=[i[0][0]+i[0][1],i[1]-len(i[0][1])]
+                        if i[1]<0:
+                            if (s:=len(i[0])+i[1])<0:
+                                if (s:=s+__pr)<0:r=0;
+                                else:
+                                    i=i[0]
+                                    if (s:=len(i)-s)<0:
+                                        for _ in range(-s):i+='0';
+                                        r=int(i)
+                                    else:r=int(i[:s])
+                            else:
+                                i=[i[0][:s],i[0][s:]]
+                                if (s:=len(i[1])-__pr)<0:
+                                    for _ in range(-s):i[1]+='0';
+                                    r=int(i[0]+i[1])
+                                else:r=int(i[0]+i[1][:__pr])
+                        else:
+                            s=str()
+                            for _ in range(i[1]+__pr):s+='0';
+                            r=int(i[0]+s)
+                else:
+                    i=i[0].split('.')
+                    if i[0][0]=='-':i=[i[0][1:],i[1]];n=-1;
+                    if len(i)==1:
+                        i=i[0]
+                        for _ in range(__pr):i+='0';
+                        r=int(i)
+                    else:
+                        if (s:=len(i[1])-__pr)<0:
+                            for _ in range(-s):i[1]+='0'
+                            r=int(i[0]+i[1])
+                        else:r=int(i[0]+i[1][:__pr])
+                return n*r
+            self.__interval=tuple(map(lambda x:__toint(x,__pr),__i));self.__pr=__pr;self.random=lambda n,s=None:self.__frandom(n,s)
+        except Exception as e:print('Invalid command: rdeciml()');retrn('c',e);
+
+    def __frandom(self,__n=1,s=None)->Decimal|tuple[Decimal,...]:
+        try:
+            if s is not None:seed(s);
+            def __todeciml(i:int)->Decimal:
+                i=str(i);return Decimal(i[:(s:=len(i)-self.__pr)]+'.'+i[s:]);
+            if __n==1:return __todeciml(randint(*self.__interval));
+            else:return tuple(map(lambda _:__todeciml(randint(*self.__interval)),range(__n)));
+        except Exception as e:print('Invalid Command: rdeciml.random()');retrn('c',e);
 
 
 _Pi = '3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679'
