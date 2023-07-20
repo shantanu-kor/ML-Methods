@@ -19,39 +19,33 @@ class precision:
         return _DecimalPrecision
 
 
-def deciml(a: float | int | str | Decimal) -> Decimal:
+def deciml(__a:float|int|str|Decimal)->Decimal:
     try:
         global _DecimalPrecision
-        b = (a := str(a)).lstrip('-').split('.')
-        match len(b):
-            case 1:
-                if 'E' in b[0]:
-                    getcontext().prec = _DecimalPrecision + 1
-                    return Decimal(a)
-                else:
-                    return Decimal(a)
-            case 2:
-                b0, b1 = b
-                if int(b0) == 0:
-                    c = 0
-                    for i in b1:
-                        if i != '0':
-                            getcontext().prec = _DecimalPrecision - c
-                            break
-                        c += 1
-                        if c > _DecimalPrecision:
-                            if a[0][0] == '-':
-                                a = '-'+b1+'E-'+str(len(b1))
-                                getcontext().prec = _DecimalPrecision + 1
-                            else:
-                                a = b1+'E-'+str(len(b1))
-                                getcontext().prec = _DecimalPrecision + 1
-                            break
-                else:
-                    getcontext().prec = len(b0) + _DecimalPrecision
-        return Decimal(a) + 0
-    except:
-        return Decimal('NaN')
+        __pr=_DecimalPrecision
+        def __exp(__a:str):
+            match len(a:=__a.split('e')):
+                case 1:
+                    match len(a:=__a.split('E')):
+                        case 1:return a+['0',]; 
+                        case 2:return a;
+                        case _:return None;
+                case 2:return a;
+                case _:return None;
+        __a=str(__a)
+        if __a[0]=='-':a0=__a[0];__a=__a[1:];
+        else:a0='';
+        if (a1:=__exp(__a)) is None:raise Exception;
+        if len(a2:=a1[0].split('.'))==1:a2+=['0',];
+        if a1[0].startswith('0.0') is True:
+            c=1
+            for i in a2[1][1:]:
+                if i=='0':c+=1;
+                else:break;
+            a2[0]=a2[1][c];a2[1]=a2[1][c+1:];a1[1]=str(int(a1[1])-c-1);
+        if len(a2[1])>__pr:a2[1]=a2[1][:__pr];del __pr,__a;
+        getcontext().prec=sum(map(len,a2));return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
+    except:return Decimal('NaN');
 
 # args: (start number,end number), decimal precision, seed
 def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
