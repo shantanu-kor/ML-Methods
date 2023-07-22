@@ -54,86 +54,151 @@ def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
         if __n==1:return randint(*__i);
         return tuple(map(lambda _:randint(*__i),range(__n)))
     except Exception as e:retrn('c');
+
+# rdeciml(num1,num2,precision)
+# rdeciml.random(n,seed)
+# .cgpr(new precision)
+class rdeciml():
     
+    def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=None)->None:
+        global _DecimalPrecision
+        if __pr is None:__pr=_DecimalPrecision
+        __a=str(__a);__b=str(__b);
+        def __exp(__a)->list:
+            match len(a1:=__a.split('E')):
+                case 1:
+                    match len(a2:=__a.split('e')):
+                        case 1:return a2+[0,];
+                        case 2:return a2;
+                        case _:return None;
+                case 2:return a1;
+                case _:return None;
+        def __dtd(__a)->list:
+            match len(a1:=__a.split('.')):
+                case 1:return a1+['',];
+                case 2:return a1;
+                case _:return None;
+        def __etd(__a)->list:
+            __a,a1=__a
+            if int(__a[1])>=0:
+                if (la1:=len(a1[1]))<(i1a:=int(__a[1])):
+                    z=''
+                    for _ in range(i1a-la1):z+='0';
+                    return [a1[0]+a1[1]+z,'0'];
+                elif la1>=i1a:
+                    return [a1[0]+a1[1][:i1a-la1],a1[1][i1a-la1:]]
+                else:return None
+            else:
+                if (la0:=len(a1[0]))<(i1a:=-int(__a[1])):
+                    z=''
+                    for _ in range(i1a-la0):z+='0';
+                    return ['0',z+a1[0]+__a[1]]
+                elif la0>=i1a:
+                    return [a1[0][:i1a-la0],a1[1][i1a-la0:]+a1[0]]
+                else:return None
+        __a,__b=tuple(map(__exp,(__a,__b)))
+        if __a is None or __b is None:raise Exception;
+        a1,b1=tuple(map(__dtd,(__a[0],__b[0])));
+        if a1 is None or b1 is None:raise Exception;
+        __a,__b=tuple(map(__etd,((__a,a1),(__b,b1))))
+        if __a is None or __b is None:raise Exception;
+        self.__oa=__a;self.__ob=__b;del a1,b1;__a,__b=map(self.__dtip,((__a,__pr),(__b,__pr)));
+        self.__a=__a;self.__b=__b;self.__pr=__pr;del __a,__b,__pr;self.random=lambda __n,__s=None:self.__frandom(self.__pr,__n,__s);
+
+    def __dtip(self,__apr)->int:
+        __a,__pr=__apr
+        if (la:=len(__a[1]))<__pr:
+            for _ in range(__pr-la):__a[1]+='0';
+        return int(__a[0]+__a[1][:__pr]);
+
+    def __frandom(self,__pr,__n,__s)->list:
+        def rint(__a,__b,__pr):
+            (z:=[__a,__b]).sort();__a,__b=z;del z;r=str(randint(__a,__b));return r[:(r1:=len(r)-__pr)]+'.'+r[r1:];
+        seed(__s);return [Decimal(rint(self.__a,self.__b,__pr)) for _ in range(__n)];
+
+    def cgpr(self,__pr)->None:
+        self.__pr=__pr;del __pr;self.__a,self.__b=map(self.__dtip,((self.__oa,self.__pr),(self.__ob,self.__pr)));print("New precision: "+str(self.__pr));
+
+
 # rdecimal.random(n)
 # args: (start number,end number), decimal precision
-class rdeciml:
-    
-    def __init__(self,__i:tuple[int|float|Decimal|str,int|float|Decimal|str], __pr=None)->None:
-        try:
-            global _DecimalPrecision
-            if __pr is None:__pr=_DecimalPrecision;
-            def __toint(__i,__pr)->int:
-                if len(i:=str(__i).split('E'))==1:i=i[0].split('e');
-                n=1
-                if len(i)==2:
-                    i=[i[0].split('.'),int(i[1])]
-                    if i[0][0][0]=='-':i[0][0]=i[0][0][1:];n=-1;
-                    if len(i[0])==1:
-                        if i[1]<0:
-                            if (s:=len(i[0][0])+i[1])<0:
-                                if (s:=s+__pr)<0:r=0;
-                                else:
-                                    i=i[0][0]
-                                    if (s:=len(i)-s)<0:
-                                        for _ in range(-s):i+='0';
-                                        r=int(i)
-                                    else:r=int(i[:s])
-                            else:
-                                i=[i[0][0][:s],i[0][0][s:]]
-                                if (s:=len(i[1])-__pr)<0:
-                                    for _ in range(-s):i[1]+='0';
-                                    r=int(i[0]+i[1])
-                                else:r=int(i[0]+i[1][:__pr])
-                        else:
-                            s=str()
-                            for _ in range(i[1]+__pr):s+='0';
-                            r=int(i[0][0]+s)
-                    else:
-                        i=[i[0][0]+i[0][1],i[1]-len(i[0][1])]
-                        if i[1]<0:
-                            if (s:=len(i[0])+i[1])<0:
-                                if (s:=s+__pr)<0:r=0;
-                                else:
-                                    i=i[0]
-                                    if (s:=len(i)-s)<0:
-                                        for _ in range(-s):i+='0';
-                                        r=int(i)
-                                    else:r=int(i[:s])
-                            else:
-                                i=[i[0][:s],i[0][s:]]
-                                if (s:=len(i[1])-__pr)<0:
-                                    for _ in range(-s):i[1]+='0';
-                                    r=int(i[0]+i[1])
-                                else:r=int(i[0]+i[1][:__pr])
-                        else:
-                            s=str()
-                            for _ in range(i[1]+__pr):s+='0';
-                            r=int(i[0]+s)
-                else:
-                    i=i[0].split('.')
-                    if i[0][0]=='-':i=[i[0][1:],i[1]];n=-1;
-                    if len(i)==1:
-                        i=i[0]
-                        for _ in range(__pr):i+='0';
-                        r=int(i)
-                    else:
-                        if (s:=len(i[1])-__pr)<0:
-                            for _ in range(-s):i[1]+='0'
-                            r=int(i[0]+i[1])
-                        else:r=int(i[0]+i[1][:__pr])
-                return n*r
-            self.__interval=tuple(map(lambda x:__toint(x,__pr),__i));self.__pr=__pr;self.random=lambda n,s=None:self.__frandom(n,s)
-        except Exception as e:print('Invalid command: rdeciml()');retrn('c',e);
-
-    def __frandom(self,__n=1,s=None)->Decimal|tuple[Decimal,...]:
-        try:
-            if s is not None:seed(s);
-            def __todeciml(i:int)->Decimal:
-                i=str(i);return Decimal(i[:(s:=len(i)-self.__pr)]+'.'+i[s:]);
-            if __n==1:return __todeciml(randint(*self.__interval));
-            else:return tuple(map(lambda _:__todeciml(randint(*self.__interval)),range(__n)));
-        except Exception as e:print('Invalid Command: rdeciml.random()');retrn('c',e);
+# class rdeciml:
+#     
+#     def __init__(self,__i:tuple[int|float|Decimal|str,int|float|Decimal|str], __pr=None)->None:
+#         try:
+#             global _DecimalPrecision
+#             if __pr is None:__pr=_DecimalPrecision;
+#             def __toint(__i,__pr)->int:
+#                 if len(i:=str(__i).split('E'))==1:i=i[0].split('e');
+#                 n=1
+#                 if len(i)==2:
+#                     i=[i[0].split('.'),int(i[1])]
+#                     if i[0][0][0]=='-':i[0][0]=i[0][0][1:];n=-1;
+#                     if len(i[0])==1:
+#                         if i[1]<0:
+#                             if (s:=len(i[0][0])+i[1])<0:
+#                                 if (s:=s+__pr)<0:r=0;
+#                                 else:
+#                                     i=i[0][0]
+#                                     if (s:=len(i)-s)<0:
+#                                         for _ in range(-s):i+='0';
+#                                         r=int(i)
+#                                     else:r=int(i[:s])
+#                             else:
+#                                 i=[i[0][0][:s],i[0][0][s:]]
+#                                 if (s:=len(i[1])-__pr)<0:
+#                                     for _ in range(-s):i[1]+='0';
+#                                     r=int(i[0]+i[1])
+#                                 else:r=int(i[0]+i[1][:__pr])
+#                         else:
+#                             s=str()
+#                             for _ in range(i[1]+__pr):s+='0';
+#                             r=int(i[0][0]+s)
+#                     else:
+#                         i=[i[0][0]+i[0][1],i[1]-len(i[0][1])]
+#                         if i[1]<0:
+#                             if (s:=len(i[0])+i[1])<0:
+#                                 if (s:=s+__pr)<0:r=0;
+#                                 else:
+#                                     i=i[0]
+#                                     if (s:=len(i)-s)<0:
+#                                         for _ in range(-s):i+='0';
+#                                         r=int(i)
+#                                     else:r=int(i[:s])
+#                             else:
+#                                 i=[i[0][:s],i[0][s:]]
+#                                 if (s:=len(i[1])-__pr)<0:
+#                                     for _ in range(-s):i[1]+='0';
+#                                     r=int(i[0]+i[1])
+#                                 else:r=int(i[0]+i[1][:__pr])
+#                         else:
+#                             s=str()
+#                             for _ in range(i[1]+__pr):s+='0';
+#                             r=int(i[0]+s)
+#                 else:
+#                     i=i[0].split('.')
+#                     if i[0][0]=='-':i=[i[0][1:],i[1]];n=-1;
+#                     if len(i)==1:
+#                         i=i[0]
+#                         for _ in range(__pr):i+='0';
+#                         r=int(i)
+#                     else:
+#                         if (s:=len(i[1])-__pr)<0:
+#                             for _ in range(-s):i[1]+='0'
+#                             r=int(i[0]+i[1])
+#                         else:r=int(i[0]+i[1][:__pr])
+#                 return n*r
+#             self.__interval=tuple(map(lambda x:__toint(x,__pr),__i));self.__pr=__pr;self.random=lambda n,s=None:self.__frandom(n,s)
+#         except Exception as e:print('Invalid command: rdeciml()');retrn('c',e);
+# 
+#     def __frandom(self,__n=1,s=None)->Decimal|tuple[Decimal,...]:
+#         try:
+#             if s is not None:seed(s);
+#             def __todeciml(i:int)->Decimal:
+#                 i=str(i);return Decimal(i[:(s:=len(i)-self.__pr)]+'.'+i[s:]);
+#             if __n==1:return __todeciml(randint(*self.__interval));
+#             else:return tuple(map(lambda _:__todeciml(randint(*self.__interval)),range(__n)));
+#         except Exception as e:print('Invalid Command: rdeciml.random()');retrn('c',e);
 
 
 _Pi = '3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679'
