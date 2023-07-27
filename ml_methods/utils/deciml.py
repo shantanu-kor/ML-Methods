@@ -19,7 +19,7 @@ class precision:
         return _DecimalPrecision
 
 
-def deciml(__a:float|int|str|Decimal)->Decimal:
+def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
     try:
         global _DecimalPrecision
         __pr=_DecimalPrecision
@@ -37,14 +37,20 @@ def deciml(__a:float|int|str|Decimal)->Decimal:
         else:a0='';
         if (a1:=__exp(__a)) is None:raise Exception;
         if len(a2:=a1[0].split('.'))==1:a2+=['0',];
-        if a1[0].startswith('0.0') is True:
-            c=1
-            for i in a2[1][1:]:
-                if i=='0':c+=1;
-                else:break;
-            a2[0]=a2[1][c];a2[1]=a2[1][c+1:];a1[1]=str(int(a1[1])-c-1);
-        if len(a2[1])>__pr:a2[1]=a2[1][:__pr];del __pr,__a;
-        getcontext().prec=sum(map(len,a2));return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
+        if a1[0][:3]=='0.0':
+            if len(a1[0]) > 3:
+                c=1
+                for i in a2[1][1:]:
+                    if i=='0':c+=1;
+                    else:break;
+                a2[0]=a2[1][c];a2[1]=a2[1][c+1:];a1[1]=str(int(a1[1])-c-1);
+            else:return Decimal('0.0');
+        if len(a2[1])>__pr:
+            a2[1]=a2[1][:__pr+1];del __pr,__a;
+            if int(a2[1][-1])>=5:
+                a2[1]=a2[1][:-2]+str(int(a2[1][-2])+1);
+            else:a2[1]=a2[1][:-1]
+        return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
     except:return Decimal('NaN');
 
 # args: (start number,end number), decimal precision, seed
