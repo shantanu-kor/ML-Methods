@@ -23,7 +23,7 @@ def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
     try:
         global _DecimalPrecision
         __pr=_DecimalPrecision
-        def __exp(__a:str):
+        def __exp(__a:str)->list:
             match len(a:=__a.split('e')):
                 case 1:
                     match len(a:=__a.split('E')):
