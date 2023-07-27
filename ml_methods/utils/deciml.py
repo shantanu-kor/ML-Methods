@@ -49,7 +49,7 @@ def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
             a2[1]=a2[1][:__pr+1];del __pr,__a;
             if int(a2[1][-1])>=5:
                 a2[1]=a2[1][:-2]+str(int(a2[1][-2])+1);
-            else:a2[1]=a2[1][:-1]
+            else:a2[1]=a2[1][:-1];
         return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
     except:return Decimal('NaN');
 
