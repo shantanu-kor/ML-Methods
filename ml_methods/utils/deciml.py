@@ -74,7 +74,7 @@ class rdeciml():
             match len(a1:=__a.split('E')):
                 case 1:
                     match len(a2:=__a.split('e')):
-                        case 1:return a2+[0,];
+                        case 1:return a2+['0',];
                         case 2:return a2;
                         case _:return None;
                 case 2:return a1;
