@@ -74,7 +74,7 @@ class rdeciml():
             match len(a1:=__a.split('E')):
                 case 1:
                     match len(a2:=__a.split('e')):
-                        case 1:return a2+['0',];
+                        case 1:return a2+[0,];
                         case 2:return a2;
                         case _:return None;
                 case 2:return a1;
@@ -86,8 +86,8 @@ class rdeciml():
                 case _:return None;
         def __etd(__a)->list:
             __a,a1=__a
-            if int(__a[1])>=0:
-                if (la1:=len(a1[1]))<(i1a:=int(__a[1])):
+            if (i1a:=int(__a[1]))>=0:
+                if (la1:=len(a1[1]))<i1a:
                     z=''
                     for _ in range(i1a-la1):z+='0';
                     return [a1[0]+a1[1]+z,'0'];
@@ -95,7 +95,7 @@ class rdeciml():
                     return [a1[0]+a1[1][:i1a-la1],a1[1][i1a-la1:]]
                 else:return None
             else:
-                if (la0:=len(a1[0]))<(i1a:=-int(__a[1])):
+                if (la0:=len(a1[0]))<i1a:
                     z=''
                     for _ in range(i1a-la0):z+='0';
                     return ['0',z+a1[0]+__a[1]]
