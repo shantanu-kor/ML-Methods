@@ -648,6 +648,7 @@ class trig:
         try:
             global _DecimalPrecision
             _DecimalPrecision += 2
+            a = Decimal(str(a))
             if a < -1 or a > 1:
                 raise Exception
             a1 = algbra.pwr(2, -0.5)
@@ -656,7 +657,6 @@ class trig:
             elif a < algbra.mul(-1, a1):
                 r = algbra.mul(-1, cls.acos(algbra.pwr(algbra.sub(1, algbra.pwr(a, 2)), 0.5)))
             else:
-                a = Decimal(str(a))
                 i, r, rn, a1, d1, d2, d3 = 0, (n := a), None, algbra.pwr(a, 2), 1, 1, 1
                 while r != rn:
                     rn = r
@@ -672,6 +672,7 @@ class trig:
         try:
             global _DecimalPrecision
             _DecimalPrecision += 2
+            a = Decimal(str(a))
             if a < -1 or a > 1:
                 raise Exception
             a1 = algbra.pwr(2, -0.5)
@@ -680,7 +681,6 @@ class trig:
             elif a < algbra.mul(-1, a1):
                 r = algbra.add(algbra.mul(-1, cls.asin(a)), algbra.div(constant.pi(_DecimalPrecision), 2))
             else:
-                a = Decimal(str(a))
                 i = 0
                 r = algbra.sub(algbra.div(constant.pi(_DecimalPrecision), 2), (n := a))
                 rn, a1, d1, d2, d3 = None, algbra.pwr(a, 2), 1, 1, 1 
