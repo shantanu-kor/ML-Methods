@@ -38,12 +38,14 @@ def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
         if (a1:=__exp(__a)) is None:raise Exception;
         if len(a2:=a1[0].split('.'))==1:a2+=['0',];
         if a1[0][:3]=='0.0':
-            if len(a1[0]) > 3:
+            if (l1a:=len(a1[0]))>4:
                 c=1
                 for i in a2[1][1:]:
                     if i=='0':c+=1;
                     else:break;
                 a2[0]=a2[1][c];a2[1]=a2[1][c+1:];a1[1]=str(int(a1[1])-c-1);
+            elif l1a==4:
+                a2[0]=a2[1][1];a2[1]='0';a1[1]=str(int(a1[1])-2);
             else:return Decimal('0.0');
         if len(a2[1])>__pr:
             a2[1]=a2[1][:__pr+1];del __pr,__a;
