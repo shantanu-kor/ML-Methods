@@ -22,7 +22,7 @@ class precision:
 def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
     try:
         global _DecimalPrecision
-        __pr=_DecimalPrecision
+        if __pr is None:__pr=_DecimalPrecision;
         def __exp(__a:str)->list:
             match len(a:=__a.split('e')):
                 case 1:
@@ -70,7 +70,7 @@ class rdeciml():
     
     def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=None)->None:
         global _DecimalPrecision
-        if __pr is None:__pr=_DecimalPrecision
+        if __pr is None:__pr=_DecimalPrecision;
         __a=str(__a);__b=str(__b);
         def __exp(__a)->list:
             match len(a1:=__a.split('E')):
