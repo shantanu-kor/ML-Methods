@@ -68,7 +68,9 @@ def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
 # .cgpr(new precision)
 class rdeciml():
     
-    def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=getpr())->None:
+    def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=None)->None:
+        global _DecimalPrecision
+        if __pr is None:__pr=_DecimalPrecision;
         __a=str(__a);__b=str(__b);
         def __exp(__a)->list:
             match len(a1:=__a.split('E')):
