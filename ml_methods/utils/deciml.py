@@ -84,7 +84,9 @@ class rdeciml():
         def __dtd(__a)->list:
             match len(a1:=__a.split('.')):
                 case 1:return a1+['',];
-                case 2:return a1;
+                case 2:
+                    if a1[0]=='':a1[0]='0';
+                    return a1;
                 case _:return None;
         def __etd(__a)->list:
             __a,a1=__a
@@ -94,7 +96,7 @@ class rdeciml():
                     for _ in range(i1a-la1):z+='0';
                     return [a1[0]+a1[1]+z,'0'];
                 elif la1>=i1a:
-                    return [a1[0]+a1[1][:i1a-la1],a1[1][i1a-la1:]]
+                    return [a1[0]+a1[1][:(da:=i1a-la1)],a1[1][da:]]
                 else:return None
             else:
                 if (la0:=len(a1[0]))<(ni1a:=-i1a):
