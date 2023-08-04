@@ -68,9 +68,7 @@ def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
 # .cgpr(new precision)
 class rdeciml():
     
-    def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=None)->None:
-        global _DecimalPrecision
-        if __pr is None:__pr=_DecimalPrecision;
+    def __init__(self,__a:int|float|Decimal|str,__b:int|float|Decimal|str,__pr=getpr())->None:
         __a=str(__a);__b=str(__b);
         def __exp(__a)->list:
             match len(a1:=__a.split('E')):
@@ -97,12 +95,12 @@ class rdeciml():
                     return [a1[0]+a1[1][:i1a-la1],a1[1][i1a-la1:]]
                 else:return None
             else:
-                if (la0:=len(a1[0]))<i1a:
+                if (la0:=len(a1[0]))<(ni1a:=-i1a):
                     z=''
-                    for _ in range(i1a-la0):z+='0';
+                    for _ in range(ni1a-la0):z+='0';
                     return ['0',z+a1[0]+__a[1]]
-                elif la0>=i1a:
-                    return [a1[0][:i1a-la0],a1[1][i1a-la0:]+a1[0]]
+                elif la0>=ni1a:
+                    return [a1[0][:(da:=la0-ni1a)],a1[1][da:]+a1[0]]
                 else:return None
         __a,__b=tuple(map(__exp,(__a,__b)))
         if __a is None or __b is None:raise Exception;
@@ -121,7 +119,13 @@ class rdeciml():
 
     def __frandom(self,__pr,__n,__s)->list:
         def rint(__a,__b,__pr):
-            (z:=[__a,__b]).sort();__a,__b=z;del z;r=str(randint(__a,__b));return r[:(r1:=len(r)-__pr)]+'.'+r[r1:];
+            (z:=[__a,__b]).sort();__a,__b=z;del z;r=str(randint(__a,__b));
+            if (r1:=len(r)-__pr)>0:
+                return r[:r1]+'.'+r[r1:];
+            else:
+                z=''
+                for _ in range(-r1):z+='0';
+                return '0.'+z+r
         seed(__s);return [Decimal(rint(self.__a,self.__b,__pr)) for _ in range(__n)];
 
     def cgpr(self,__pr)->None:
