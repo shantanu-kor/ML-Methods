@@ -37,23 +37,21 @@ def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
         else:a0='';
         if (a1:=__exp(__a)) is None:raise Exception;
         if len(a2:=a1[0].split('.'))==1:a2+=['0',];
-        if a1[0][:3]=='0.0':
-            if (l1a:=len(a1[0]))>4:
+        if Decimal(a1[0])==0:return Decimal('0.0');
+        if int(a2[0])==0:
+            if a2[1][0]=='0':
                 c=1
                 for i in a2[1][1:]:
                     if i=='0':c+=1;
                     else:break;
                 a2[0]=a2[1][c];a2[1]=a2[1][c+1:];a1[1]=str(int(a1[1])-c-1);
-            elif l1a==4:
-                a2[0]=a2[1][1];a2[1]='0';a1[1]=str(int(a1[1])-2);
-            else:return Decimal('0.0');
         if len(a2[1])>__pr:
             a2[1]=a2[1][:__pr+1];del __pr,__a;
             if int(a2[1][-1])>=5:
                 a2[1]=a2[1][:-2]+str(int(a2[1][-2])+1);
             else:a2[1]=a2[1][:-1];
         return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
-    except:return Decimal('NaN');
+    except Exception as e:print("Invalid commmand: deciml\n",e);return Decimal('NaN');
 
 # args: (start number,end number), decimal precision, seed
 def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
