@@ -51,7 +51,7 @@ def deciml(__a:float|int|str|Decimal,__pr=None)->Decimal:
                 a2[1]=a2[1][:-2]+str(int(a2[1][-2])+1);
             else:a2[1]=a2[1][:-1];
         return Decimal(a0+a2[0]+'.'+a2[1]+'E'+a1[1]);
-    except Exception as e:print("Invalid commmand: deciml\n",e);return Decimal('NaN');
+    except:return Decimal('NaN');
 
 # args: (start number,end number), decimal precision, seed
 def rint(__i:tuple[int,int],__n=1,s=None)->int|tuple[int,...]:
